@@ -74,7 +74,7 @@ public class Crossword {
 		private Set<BoardPosition> leafBoardPosSet = new HashSet<BoardPosition>();
 		private BoardPosition rootBoardPosition;
 		
-		public Board(String firstWord, Set<String> remainingWordsSet){
+		public Board(String firstWord, List<String> remainingWordsList){
 			//populate the starting row and column. Don't need this if not doing 
 			//linked list like construction.
 			/*for(int i = 0; i < BOARD_LEN; i++){
@@ -87,7 +87,7 @@ public class Crossword {
 			insertWord(firstWord, boardMiddle, startingCol, WordOrientation.HORIZONTAL, rootBoardPosition);
 			leafBoardPosSet.add(rootBoardPosition);
 			
-			rootBoardPosition = new BoardPosition(null, remainingWordsSet);
+			rootBoardPosition = new BoardPosition(null, remainingWordsList);
 			/*rowSet.add(boardMiddle);
 			for(int i = 0; i < firstWord.length(); i++){
 				board[boardMiddle][startingCol+i] = firstWord.charAt(i);
@@ -246,7 +246,7 @@ public class Crossword {
 			
 			//check columns			
 			TreeMap<Integer, List<WordWithWordNodes>> colTMap = new TreeMap<Integer, List<WordWithWordNodes>>();
-			int verticalMax = 0;
+			int verticalMax = 0;//getHorizontalWords(rowWordNodeList, tMap);
 			
 			List<BoardPosition> childrenBoardPositionList = new ArrayList<BoardPosition>();
 			WordOrientation orient = horizontalMax > verticalMax ? WordOrientation.HORIZONTAL
@@ -266,7 +266,8 @@ public class Crossword {
 			}
 			else{
 				//add one-intersection word, only consider next longest word
-				
+				getSingleIntersectionWords(List<List<WordNode>> rowWordNodeList,
+						List<WordWithWordNodes> wordWithWordNodesList);
 			}
 			
 			return childrenBoardPositionList;
@@ -295,6 +296,64 @@ public class Crossword {
 			}
 		}
 
+		private void getSingleIntersectionWords(List<List<WordNode>> rowWordNodeList,
+				List<WordWithWordNodes> wordWithWordNodesList) {
+			
+			for(List<WordNode> wordNodeList: rowWordNodeList){
+				//a row
+				//space to prior word
+				int prevSpace = 100;				
+				for(int i = 0; i < wordNodeList.size(); i++){
+					//check for two or more intersections first
+					WordNode wordNode = wordNodeList.get(i);
+					//WordNode nextWordNode = wordNodeList.get(i+1);
+					int colNum = wordNode.col;
+					//int nextColNum = nextWordNode.col;
+					//int colDiff = nextColNum - colNum;
+					int postSpace = i == wordNodeList.size()-1 
+							? 100 : wordNodeList.get(i+1).col - colNum;
+					
+					char wordNodeChar = wordNode.letter;
+					//char nextWordNodeChar = nextWordNode.letter;					
+					String nextLongestWord = remainingWordsList.get(0);					
+					//look over all remaining words
+					//for(String word : remainingWordsList){
+						char[] wordCharAr = nextLongestWord.toCharArray();
+						for(int j = 0; j < wordCharAr.length; j++){
+							char curChar = wordCharAr[i];
+							//int intersectionCount;
+							if(prevSpace > j
+									&& curChar == wordNodeChar
+									&& j + postSpace > wordCharAr.length 
+									//&& wordCharAr[j+colDiff] == nextWordNodeChar
+											//check the word fits wrt remaining words
+									/*&& (intersectionCount = remainingWordFitsSingleton(wordCharAr, j+colDiff, 
+											wordNodeList, i+1, WordOrientation.HORIZONTAL))>0*/
+									){
+								
+								//add previous intersection
+								List<WordNode> curWordNodeList = new ArrayList<WordNode>();
+								curWordNodeList.add(wordNode);
+								//curWordNodeList.add(nextWordNode);
+								//int key = intersectionCount + 2;
+								/*if(key > horizontalMax){
+									horizontalMax = key;
+								}
+								List<WordWithWordNodes> list = tMap.get(key);
+								if(null == list){
+									list = new ArrayList<WordWithWordNodes>();									
+								}*/
+								wordWithWordNodesList
+									.add(new WordWithWordNodes(nextLongestWord, curWordNodeList));
+								//tMap.put(key, list);
+							}							
+						}						
+					//}
+					prevSpace = postSpace;					
+				}
+			}
+			//return horizontalMax;
+		}
 		/**
 		 * @param rowWordNodeList
 		 * @param tMap
@@ -351,8 +410,7 @@ public class Crossword {
 							}							
 						}						
 					}
-					prevSpace = colDiff;
-					
+					prevSpace = colDiff;					
 				}
 			}
 			return horizontalMax;
