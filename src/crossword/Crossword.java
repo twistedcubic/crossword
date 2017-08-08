@@ -85,9 +85,10 @@ public class Crossword {
 			int boardMiddle = BOARD_LEN/2;
 			int startingCol = boardMiddle - firstWord.length()/2;
 			insertWord(firstWord, boardMiddle, startingCol, WordOrientation.HORIZONTAL, rootBoardPosition);
-			leafBoardPosSet.add(rootBoardPosition);
 			
 			rootBoardPosition = new BoardPosition(null, remainingWordsList);
+			leafBoardPosSet.add(rootBoardPosition);
+			
 			/*rowSet.add(boardMiddle);
 			for(int i = 0; i < firstWord.length(); i++){
 				board[boardMiddle][startingCol+i] = firstWord.charAt(i);
@@ -103,12 +104,14 @@ public class Crossword {
 			
 			List<BoardPosition> satBoardPosList = new ArrayList<BoardPosition>();
 			
-			while(satBoardPosList.size() < 1){
+			while(satBoardPosList.size() < 1 && !this.leafBoardPosSet.isEmpty()){
+				
+				System.out.println("this.leafBoardPosSet "+this.leafBoardPosSet);
 				
 				Set<BoardPosition> newLeafBoardPosSet = new HashSet<BoardPosition>();
 				
-				for(BoardPosition leafBoardPos : leafBoardPosSet){
-					
+				for(BoardPosition leafBoardPos : this.leafBoardPosSet){
+					//System.out.println("leafBoardPos.remainingWordsList "+leafBoardPos.remainingWordsList);
 					if(leafBoardPos.remainingWordsList.isEmpty()){
 						satBoardPosList.add(leafBoardPos);
 						continue;
@@ -123,7 +126,7 @@ public class Crossword {
 					newLeafBoardPosSet.addAll(leafBoardPos
 							.findLegalWordInsertion(rowWordNodeList, colWordNodeList, this));
 				}
-				leafBoardPosSet = newLeafBoardPosSet;
+				this.leafBoardPosSet = newLeafBoardPosSet;
 			}
 			return satBoardPosList;	
 		}
@@ -333,9 +336,9 @@ public class Crossword {
 				//WordWithWordNodes list to record the positions filled
 				List<WordWithWordNodes> wordWithWordNodesHorList = new ArrayList<WordWithWordNodes>();
 				List<WordWithWordNodes> wordWithWordNodesVerList = new ArrayList<WordWithWordNodes>();
-				getSingleIntersectionWords(rowWordNodeList,
+				getSingleIntersectionWords(board, rowWordNodeList,
 						wordWithWordNodesHorList, WordOrientation.HORIZONTAL);
-				getSingleIntersectionWords(rowWordNodeList,
+				getSingleIntersectionWords(board, rowWordNodeList,
 						wordWithWordNodesVerList, WordOrientation.VERTICAL);
 				/*if(!wordWithWordNodesHorList.isEmpty() || !wordWithWordNodesVerList.isEmpty()){
 					this.remainingWordsList.remove(0);
@@ -386,8 +389,9 @@ public class Crossword {
 			}
 		}
 
-		private void getSingleIntersectionWords(List<List<WordNode>> rowWordNodeList,
-				List<WordWithWordNodes> wordWithWordNodesList, WordOrientation wordOrientation) {
+		private void getSingleIntersectionWords(Board board, List<List<WordNode>> rowWordNodeList,
+				List<WordWithWordNodes> wordWithWordNodesList,
+				WordOrientation wordOrientation) {
 			
 			String nextLongestWord = this.remainingWordsList.get(0);					
 			char[] wordCharAr = nextLongestWord.toCharArray();
@@ -453,9 +457,17 @@ public class Crossword {
 				if(this.remainingWordsList.size() > 1){
 					this.remainingWordsList.remove(0);
 					this.remainingWordsList.add(1, nextLongestWord);					
-				}else{
-					//last word doesn't fit, 
-					this.remainingWordsList.clear();
+				}else if(this.remainingWordsList.size() == 1){
+					//have size one in this case.
+					//last word doesn't fit, put on board at some place
+					if(WordOrientation.VERTICAL == wordOrientation){
+						String lastWord = this.remainingWordsList.get(0);
+						int startingPos = BOARD_LEN/2 - BOARD_LEN/3;
+						board.insertWord(lastWord, startingPos, 
+								startingPos, wordOrientation, this);
+						this.remainingWordsList.clear();
+					}
+					
 				}
 				
 			}
@@ -623,6 +635,8 @@ public class Crossword {
 	private static class WordComparator implements Comparator<String>{
 		//long words come first
 		public int compare(String word1, String word2){
+			//also do alphabetical sorting
+			
 			return word1.length() < word2.length() ? 1 : (word1.length() > word2.length() ? -1 : 0);
 		}
 	}
@@ -648,7 +662,11 @@ public class Crossword {
 	public static void main(String[] args){
 		
 		String[] wordsAr = {"apple","pear"};
-		processSet(Arrays.asList(wordsAr));
+		List<String> wordsList = new ArrayList<String>();
+		for(String word : wordsAr){
+			wordsList.add(word);
+		}
+		processSet(wordsList);
 		
 	}
 	
