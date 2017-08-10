@@ -204,7 +204,7 @@ public class Crossword {
 						node = new BoardNode(curChar, boardPos);
 						board[rowStart][colStart+i] = node;
 					}
-					node.addBoardPosition(curChar, boardPos);
+					node.addBoardPosition(curChar, boardPos, orient);
 					//if(true) throw new IllegalStateException(boardPos + "");
 					colSet.add(colStart + i);
 				}	
@@ -217,7 +217,7 @@ public class Crossword {
 						node = new BoardNode(curChar, boardPos);
 						board[rowStart+i][colStart] = node;
 					}
-					node.addBoardPosition(curChar, boardPos);
+					node.addBoardPosition(curChar, boardPos, orient);
 					rowSet.add(rowStart+i);
 				}
 				colSet.add(colStart);
@@ -279,7 +279,9 @@ public class Crossword {
 		Map<BoardPosition, Character> boardPosCharMap 
 			= new HashMap<BoardPosition, Character>();
 		//char letter;
-		Set<BoardPosition> boardPositionSet;
+		//Set<BoardPosition> boardPositionSet;
+		Set<BoardPosition> boardPositionHorSet;
+		Set<BoardPosition> boardPositionVerSet;
 		
 		/**
 		 * @param letter_
@@ -288,7 +290,9 @@ public class Crossword {
 		BoardNode(char letter_, BoardPosition boardPos){
 			//this.letter = letter_;
 			this.boardPosCharMap.put(boardPos, letter_);
-			this.boardPositionSet = new HashSet<BoardPosition>();
+			//this.boardPositionSet = new HashSet<BoardPosition>();
+			this.boardPositionHorSet = new HashSet<BoardPosition>();
+			this.boardPositionVerSet = new HashSet<BoardPosition>();
 		}
 		
 		/**
@@ -297,9 +301,14 @@ public class Crossword {
 		 * @param letter_
 		 * @param boardPosition
 		 */
-		void addBoardPosition(char letter_, BoardPosition boardPosition){
+		void addBoardPosition(char letter_, BoardPosition boardPosition, 
+				WordOrientation orient){
 			this.boardPosCharMap.put(boardPosition, letter_);
-			this.boardPositionSet.add(boardPosition);
+			if(WordOrientation.HORIZONTAL == orient){
+				this.boardPositionHorSet.add(boardPosition);				
+			}else{
+				this.boardPositionVerSet.add(boardPosition);
+			}
 		}
 		
 		/**
@@ -308,8 +317,9 @@ public class Crossword {
 		 * @return BoardPosition that's contained in this Node, could be a parent.
 		 * null if none of ancestors is contained in this Node.
 		 */
-		BoardPosition containsBoardPosition(BoardPosition boardPosition){
-			if(this.boardPositionSet.contains(boardPosition)){
+		BoardPosition containsBoardPosition(BoardPosition boardPosition, ){
+			if(this.boardPositionHorSet.contains(boardPosition)
+					|| this.boardPositionVerSet.contains(boardPosition)){
 				return boardPosition;
 			}
 			//check parents
