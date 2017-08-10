@@ -153,12 +153,17 @@ public class Crossword {
 			List<char[]> boardRowList = new ArrayList<char[]>();
 			
 			//int rowSetSz = rowSet.size();
-			int colSetSz = colSet.size();
-			int smallestCol = colSet.iterator().next();
+			//int colSetSz = colSet.size();
+			List<Integer> colSetList = new ArrayList<Integer>(colSet);
+			int smallestCol = colSetList.get(0);
+			int largestCol = colSetList.get(colSetList.size()-1);
+			int colSetDiff = largestCol - smallestCol + 1;
+			System.out.println("colSetDiff "+colSetDiff);
+			//int smallestCol = colSet.iterator().next();
 			//int j = 0; j < BOARD_LEN; j++
 			for(int j : rowSet){
 				//List<WordNode> nodeList = new ArrayList<WordNode>();
-				char[] rowAr = new char[colSetSz];
+				char[] rowAr = new char[colSetDiff];
 				//int i = 0; i < BOARD_LEN; i++
 				for(int i : colSet){
 					BoardNode boardNode = this.board[j][i];
@@ -364,11 +369,11 @@ public class Crossword {
 			//keys are number of intersections, values are words and that intersection set
 			TreeMap<Integer, List<WordWithWordNodes>> tMap = new TreeMap<Integer, List<WordWithWordNodes>>();
 			
-			int horizontalMax = getHorizontalWords(rowWordNodeList, tMap, WordOrientation.HORIZONTAL);
+			int horizontalMax = getMultiIntersectWords(board, rowWordNodeList, tMap, WordOrientation.HORIZONTAL);
 			
 			//check columns			
 			TreeMap<Integer, List<WordWithWordNodes>> colTMap = new TreeMap<Integer, List<WordWithWordNodes>>();
-			int verticalMax = getHorizontalWords(colWordNodeList, colTMap, WordOrientation.VERTICAL);
+			int verticalMax = getMultiIntersectWords(board, colWordNodeList, colTMap, WordOrientation.VERTICAL);
 			System.out.println("verticalMax "+verticalMax);
 			System.out.println("colTMap "+colTMap);
 			
@@ -479,27 +484,51 @@ public class Crossword {
 					//check for two or more intersections first
 					WordNode wordNode = wordNodeList.get(i);
 					//WordNode nextWordNode = wordNodeList.get(i+1);
-					int postSpace;					
+					int postSpace;	
+					int boardNodeRowNum = wordNode.row;
+					int boardNodeColNum = wordNode.col;
 					if(WordOrientation.HORIZONTAL == wordOrientation){
-						int colNum = wordNode.col;
+						//int colNum = wordNode.col;
+						//colOrRowAbove = colNum - 1;
 						//int nextColNum = nextWordNode.col;
 						//int colDiff = nextColNum - colNum;
 						postSpace = i == wordNodeList.size()-1 
-								? 100 : wordNodeList.get(i+1).col - colNum;						
+								? 100 : wordNodeList.get(i+1).col - boardNodeColNum;						
 					}else{
-						int rowNum = wordNode.row;
+						//int rowNum = wordNode.row;
+						//colOrRowAbove = rowNum - 1;
 						postSpace = i == wordNodeList.size()-1 
-								? 100 : wordNodeList.get(i+1).row - rowNum;
+								? 100 : wordNodeList.get(i+1).row - boardNodeRowNum;
 					}
 					char wordNodeChar = wordNode.letter;
 					
 					for(int j = 0; j < wordCharAr.length; j++){
 						char curChar = wordCharAr[j];
-						//int intersectionCount;
 						//System.out.println("curChar, wordNodeChar "+curChar + ", "+ wordNodeChar);
-						if(prevSpace > j
+
+						//to ensure the top or left of starting word isn't
+						//the end of another word with same BoardPosition.
+						int colOrRowAboveRow;
+						int colOrRowAboveCol;
+						if(WordOrientation.HORIZONTAL == wordOrientation){
+							colOrRowAboveRow = boardNodeRowNum - 1;
+							colOrRowAboveCol = boardNodeColNum - j;
+						}else{
+							colOrRowAboveRow = boardNodeRowNum - j;
+							colOrRowAboveCol = boardNodeColNum - 1;
+						}
+						BoardNode colOrRowAboveNode = board.board[colOrRowAboveRow][colOrRowAboveCol];
+						
+						if(prevSpace > j 
 									&& curChar == wordNodeChar
-									&& j + postSpace > wordCharAr.length 
+									//+1 because don't want last letter to be 
+									//immediately followed by another word.
+									&& j + postSpace > wordCharAr.length + 1
+									//check the top of the would-be starting point
+									/*
+									  && (null == colOrRowAboveNode
+										|| null == colOrRowAboveNode.containsBoardPosition(this))
+										****/
 									//&& wordCharAr[j+colDiff] == nextWordNodeChar
 											//check the word fits wrt remaining words
 									/*&& (intersectionCount = remainingWordFitsSingleton(wordCharAr, j+colDiff, 
@@ -547,7 +576,7 @@ public class Crossword {
 		 * @param rowWordNodeList
 		 * @param tMap
 		 */
-		private int getHorizontalWords(List<List<WordNode>> rowWordNodeList,
+		private int getMultiIntersectWords(Board board, List<List<WordNode>> rowWordNodeList,
 				TreeMap<Integer, List<WordWithWordNodes>> tMap, WordOrientation orient) {
 			
 			int horizontalMax = 0;
@@ -561,12 +590,16 @@ public class Crossword {
 					WordNode nextWordNode = wordNodeList.get(i+1);
 
 					int colNum;
-					int nextColNum;					
+					int nextColNum;			
+					int boardNodeRowNum;
+					int boardNodeColNum;
 					if(WordOrientation.HORIZONTAL == orient){
-						colNum = wordNode.col;
+						boardNodeRowNum = wordNode.row;
+						boardNodeColNum = colNum = wordNode.col;
 						nextColNum = nextWordNode.col;
 					}else{
-						colNum = wordNode.row;
+						boardNodeRowNum = colNum = wordNode.row;
+						boardNodeColNum = wordNode.col;
 						nextColNum = nextWordNode.row;						
 					}
 					int colDiff = nextColNum - colNum;
@@ -577,13 +610,30 @@ public class Crossword {
 					//look over all remaining words
 					for(String word : remainingWordsList){
 						char[] wordCharAr = word.toCharArray();
+						
 						for(int j = 0; j < wordCharAr.length; j++){
 							char curChar = wordCharAr[j];
+
+							//to ensure the top or left of starting word isn't
+							//the end of another word with same BoardPosition.
+							int colOrRowAboveRow;
+							int colOrRowAboveCol;
+							if(WordOrientation.HORIZONTAL == orient){
+								colOrRowAboveRow = boardNodeRowNum - 1;
+								colOrRowAboveCol = boardNodeColNum - j;
+							}else{
+								colOrRowAboveRow = boardNodeRowNum - j;
+								colOrRowAboveCol = boardNodeColNum - 1;
+							}
+							BoardNode colOrRowAboveNode = board.board[colOrRowAboveRow][colOrRowAboveCol];
+
 							int intersectionCount;
 							if(prevSpace > j
 									&& curChar == wordNodeChar
 									&& j + colDiff < wordCharAr.length 
 									&& wordCharAr[j+colDiff] == nextWordNodeChar
+									/*&& (null == colOrRowAboveNode ||  Uncomment this!!
+											null == colOrRowAboveNode.containsBoardPosition(this))*/
 											//check the word fits wrt remaining words
 									&& (intersectionCount = remainingWordFits(wordCharAr, j+colDiff, 
 											wordNodeList, i+1, orient))>0){
@@ -619,64 +669,6 @@ public class Crossword {
 			return horizontalMax;
 		}
 		
-		private int getVerticalWords(List<List<WordNode>> colWordNodeList,
-				TreeMap<Integer, List<WordWithWordNodes>> tMap) {
-			
-			int verticalMax = 0;
-			for(List<WordNode> wordNodeList: colWordNodeList){
-				//a row
-				//space to prior word
-				int prevSpace = 100;				
-				for(int i = 0; i < wordNodeList.size()-1; i++){
-					//check for two or more intersections first
-					WordNode wordNode = wordNodeList.get(i);
-					WordNode nextWordNode = wordNodeList.get(i+1);
-					int rowNum = wordNode.row;
-					int nextRowNum = nextWordNode.row;
-					int rowDiff = nextRowNum - rowNum;
-					char wordNodeChar = wordNode.letter;
-					char nextWordNodeChar = nextWordNode.letter;
-					//int postSpace = 0     ;
-					//look over all remaining words
-					for(String word : remainingWordsList){
-						char[] wordCharAr = word.toCharArray();
-						for(int j = 0; j < wordCharAr.length; j++){
-							char curChar = wordCharAr[i];
-							int intersectionCount;
-							if(prevSpace > j
-									&& curChar == wordNodeChar
-									&& j + rowDiff < wordCharAr.length 
-									&& wordCharAr[j+rowDiff] == nextWordNodeChar
-											//check the word fits wrt remaining words
-									&& (intersectionCount = remainingWordFits(wordCharAr, j+rowDiff, 
-											wordNodeList, i+1, WordOrientation.VERTICAL))>0){
-								
-								//add previous two intersection
-								List<WordNode> curWordNodeList = new ArrayList<WordNode>();
-								curWordNodeList.add(wordNode);
-								curWordNodeList.add(nextWordNode);
-								for(int k = 0; k < intersectionCount; k++){
-									curWordNodeList.add(wordNodeList.get(i+k+2));
-								}
-								int key = intersectionCount + 2;
-								if(key > verticalMax){
-									verticalMax = key;
-								}
-								List<WordWithWordNodes> list = tMap.get(key);
-								if(null == list){
-									list = new ArrayList<WordWithWordNodes>();									
-								}
-								list.add( new WordWithWordNodes(word, curWordNodeList, j));
-								tMap.put(key, list);
-							}							
-						}						
-					}
-					prevSpace = rowDiff;					
-				}
-			}
-			return verticalMax;
-		}
-		
 		/**
 		 * Determines if the remaining letters in word fits
 		 * wrt rest of grid.
@@ -699,7 +691,9 @@ public class Crossword {
 				int diff = wordOrientation== WordOrientation.HORIZONTAL 
 						? nextNode.col - node.col 
 						: nextNode.row - node.row;
-				if(diff > remainCharCount ){
+				//+1 because don't want last letter to be 
+				//immediately followed by another word.
+				if(diff > remainCharCount + 1){
 					//count++;
 					return count;
 				}else if(nextNode.letter == wordCharAr[wordCharArIndex]){
@@ -744,7 +738,7 @@ public class Crossword {
 	
 	public static void main(String[] args){
 		
-		String[] wordsAr = {"apple","pear", "play", "alps", "yarn"};
+		String[] wordsAr = {"apple","pear", "play", "alps", "yarn","woman", "orange"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
