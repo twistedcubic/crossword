@@ -312,20 +312,49 @@ public class Crossword {
 		}
 		
 		/**
-		 *  
 		 * @param boardPosition
 		 * @return BoardPosition that's contained in this Node, could be a parent.
 		 * null if none of ancestors is contained in this Node.
 		 */
-		BoardPosition containsBoardPosition(BoardPosition boardPosition, ){
-			if(this.boardPositionHorSet.contains(boardPosition)
-					|| this.boardPositionVerSet.contains(boardPosition)){
+		BoardPosition containsBoardPosition(BoardPosition boardPosition, WordOrientation... orientAr ){
+			int orientArLen = orientAr.length;
+			BoardPosition boardPosFound;
+			
+			if(2 == orientArLen || 0 == orientArLen){
+				if(null != (boardPosFound=
+						containsBoardPosition(boardPosition, WordOrientation.HORIZONTAL))){
+					return boardPosFound;
+				}else if(null != (boardPosFound=
+						containsBoardPosition(boardPosition, WordOrientation.VERTICAL))){
+					return boardPosFound;
+				}
+			}else{
+				return containsBoardPosition(boardPosition, orientAr[0]);
+			}
+			return null;
+		}
+		
+		/**
+		 * @param boardPosition
+		 * @return BoardPosition that's contained in this Node, could be a parent.
+		 * null if none of ancestors is contained in this Node.
+		 */
+		BoardPosition containsBoardPosition(BoardPosition boardPosition, WordOrientation orient){
+			
+			Set<BoardPosition> orientedBoardPosSet;
+			if(WordOrientation.HORIZONTAL == orient){
+				orientedBoardPosSet = this.boardPositionHorSet;
+			}else{
+				orientedBoardPosSet = this.boardPositionVerSet;
+			}
+			if(orientedBoardPosSet.contains(boardPosition)){
 				return boardPosition;
 			}
+			
 			//check parents
 			BoardPosition parentPos = boardPosition.parentPosition;
 			while(null != parentPos){
-				if(this.boardPositionSet.contains(parentPos)){
+				if(orientedBoardPosSet.contains(parentPos)){
 					return parentPos;
 				}
 				boardPosition = parentPos;
@@ -642,7 +671,7 @@ public class Crossword {
 									&& curChar == wordNodeChar
 									&& j + colDiff < wordCharAr.length 
 									&& wordCharAr[j+colDiff] == nextWordNodeChar
-									/*&& (null == colOrRowAboveNode ||  Uncomment this!!
+									/*&& (null == colOrRowAboveNode ||  Uncomment this!! <---------
 											null == colOrRowAboveNode.containsBoardPosition(this))*/
 											//check the word fits wrt remaining words
 									&& (intersectionCount = remainingWordFits(wordCharAr, j+colDiff, 
