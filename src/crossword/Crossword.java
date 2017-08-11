@@ -564,10 +564,10 @@ public class Crossword {
 									//immediately followed by another word.
 									&& j + postSpace > wordCharAr.length + 1
 									//check the top of the would-be starting point
-									/*
+									///*
 									  && (null == colOrRowAboveNode
-										|| null == colOrRowAboveNode.containsBoardPosition(this))
-										****/
+										|| null == colOrRowAboveNode.containsBoardPosition(this, wordOrientation))
+										//****/
 									//&& wordCharAr[j+colDiff] == nextWordNodeChar
 											//check the word fits wrt remaining words
 									/*&& (intersectionCount = remainingWordFitsSingleton(wordCharAr, j+colDiff, 
@@ -671,8 +671,10 @@ public class Crossword {
 									&& curChar == wordNodeChar
 									&& j + colDiff < wordCharAr.length 
 									&& wordCharAr[j+colDiff] == nextWordNodeChar
-									/*&& (null == colOrRowAboveNode ||  Uncomment this!! <---------
-											null == colOrRowAboveNode.containsBoardPosition(this))*/
+									///*
+									&& (null == colOrRowAboveNode ||  //Uncomment this!! <---------
+											null == colOrRowAboveNode.containsBoardPosition(this, orient))
+									//*/
 											//check the word fits wrt remaining words
 									&& (intersectionCount = remainingWordFits(wordCharAr, j+colDiff, 
 											wordNodeList, i+1, orient))>0){
