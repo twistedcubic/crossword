@@ -234,16 +234,21 @@ public class Crossword {
 						String horWordStart = boardNode
 								.containsWordStart(boardPos, WordOrientation.HORIZONTAL);
 						String verWordStart;
+						boolean wordAdded = false;
 						if(null != horWordStart){
+							wordCounter++;
 							horIntWordMap.put(wordCounter, horWordStart);
 							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
-							wordCounter++;
-						}else if(null != (verWordStart=boardNode
+							wordAdded = true;
+						}
+						if(null != (verWordStart=boardNode
 								.containsWordStart(boardPos, WordOrientation.VERTICAL))){
+							if(!wordAdded){
+								wordCounter++;
+							}
 							verIntWordMap.put(wordCounter, verWordStart);
 							//take care of double digits!!
 							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
-							wordCounter++;
 						}else{
 							rowAr[i-smallestCol] = PLACEHOLDER_CHAR;/////HERE
 						}						
@@ -1007,9 +1012,7 @@ public class Crossword {
 	
 	private static class WordComparator implements Comparator<String>{
 		//long words come first
-		public int compare(String word1, String word2){
-			//also do alphabetical sorting
-			
+		public int compare(String word1, String word2){			
 			return word1.length() < word2.length() ? 1 : (word1.length() > word2.length() ? -1 : 0);
 		}
 	}
@@ -1037,6 +1040,7 @@ public class Crossword {
 		
 		String[] wordsAr = {"apple","pear", "play", "alps", "yarn","woman", "orange", "crocodile"};
 		wordsAr = new String[]{"french","apple","beach","perry","sadie","capemay"};
+		wordsAr = new String[]{"french", "eth", "groupon", "epic"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
