@@ -212,6 +212,13 @@ public class Crossword {
 			int smallestCol = colSetList.get(0);
 			int largestCol = colSetList.get(colSetList.size()-1);
 			int colSetDiff = largestCol - smallestCol + 1;
+			int wordCounter = 0;
+			Map<Integer, String> horIntWordMap = new HashMap<Integer, String>();
+			Map<Integer, String> verIntWordMap = new HashMap<Integer, String>();
+			
+			//List<String> horWordsList = new ArrayList<String>();
+			//List<String> verWordsList = new ArrayList<String>();
+			
 			//System.out.println("colSetDiff "+colSetDiff);
 			for(int j : rowSet){
 				//List<WordNode> nodeList = new ArrayList<WordNode>();
@@ -224,13 +231,22 @@ public class Crossword {
 					}
 					BoardPosition posContained = boardNode.containsBoardPosition(boardPos);
 					if(null != posContained){
-						String wordStart = boardNode.horBoardPosWordMap.get(boardPos);
-						if(null != wordStart){
-							
-						}else if(null != boardNode.verBoardPosWordMap.get(boardPos)){
-							
-						}
-						rowAr[i-smallestCol] = ' ';/////HERE
+						String horWordStart = boardNode
+								.containsWordStart(boardPos, WordOrientation.HORIZONTAL);
+						String verWordStart;
+						if(null != horWordStart){
+							horIntWordMap.put(wordCounter, horWordStart);
+							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
+							wordCounter++;
+						}else if(null != (verWordStart=boardNode
+								.containsWordStart(boardPos, WordOrientation.VERTICAL))){
+							verIntWordMap.put(wordCounter, verWordStart);
+							//take care of double digits!!
+							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
+							wordCounter++;
+						}else{
+							rowAr[i-smallestCol] = PLACEHOLDER_CHAR;/////HERE
+						}						
 						///rowAr[i-smallestCol] = boardNode.boardPosCharMap.get(posContained);
 					}else{
 						rowAr[i-smallestCol] = blackSquareChar;
@@ -245,6 +261,8 @@ public class Crossword {
 				System.out.println();
 				//System.out.println(Arrays.toString(rowAr));
 			}
+			System.out.println("horIntWordMap "+horIntWordMap);
+			System.out.println("verIntWordMap "+verIntWordMap);
 		}
 		/**
 		 * Legality of adding the word must be determined before calling this.
@@ -365,6 +383,35 @@ public class Crossword {
 		}
 		
 		/**
+		 * Word if the word begins at this Node, could be a parent. 
+		 * Null if no word starts in this Node.
+		 * @param boardPosition
+		 * @param orientAr
+		 * @return
+		 */
+		String containsWordStart(BoardPosition boardPosition, WordOrientation orient){
+		
+			Map<BoardPosition, String> orientedBoardPosMap;
+			if(WordOrientation.HORIZONTAL == orient){
+				orientedBoardPosMap = this.horBoardPosWordMap;
+			}else{
+				orientedBoardPosMap = this.verBoardPosWordMap;
+			}
+			
+			//check parents
+			BoardPosition parentPos = boardPosition;
+			while(null != parentPos){
+				String word = orientedBoardPosMap.get(parentPos);
+				if(null != word){
+					return word;
+				}
+				boardPosition = parentPos;
+				parentPos = boardPosition.parentPosition;
+			}
+			return null;
+		}
+		
+		/**
 		 * Adds board position to this node, along with corresponding
 		 * letter.
 		 * @param letter_
@@ -431,7 +478,7 @@ public class Crossword {
 			}
 			return null;
 		}
-	}
+	}//end of BoardNode class.
 	
 	/**
 	 * Board position recording the current position in the board tree.
