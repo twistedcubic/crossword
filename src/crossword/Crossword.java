@@ -249,7 +249,9 @@ public class Crossword {
 							verIntWordMap.put(wordCounter, verWordStart);
 							//take care of double digits!!
 							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
-						}else{
+							wordAdded = true;
+						}
+						if(!wordAdded){
 							rowAr[i-smallestCol] = PLACEHOLDER_CHAR;/////HERE
 						}						
 						///rowAr[i-smallestCol] = boardNode.boardPosCharMap.get(posContained);
@@ -750,13 +752,18 @@ public class Crossword {
 				}else if(this.remainingWordsList.size() == 1){
 					//have size one in this case.
 					//last word doesn't fit, put on board at some place
-					if(WordOrientation.VERTICAL == orient){
+					/*if(WordOrientation.VERTICAL == orient){
 						String lastWord = this.remainingWordsList.get(0);
 						int startingPos = BOARD_LEN/2 - BOARD_LEN/3;
 						board.insertWord(lastWord, startingPos, 
 								startingPos, orient, this);
 						this.remainingWordsList.clear();
-					}					
+						//don't delete this comment yet!
+						if(true) throw new IllegalStateException();
+					}*/
+					String lastWord = this.remainingWordsList.get(0);
+					System.out.println("Crossword - last word didn't fit "+lastWord);
+					//this.remainingWordsList.clear();
 				}				
 			}
 			//return horizontalMax;
@@ -1039,7 +1046,7 @@ public class Crossword {
 	public static void main(String[] args){
 		
 		String[] wordsAr = {"apple","pear", "play", "alps", "yarn","woman", "orange", "crocodile"};
-		wordsAr = new String[]{"french","apple","beach","perry","sadie","capemay"};
+		//wordsAr = new String[]{"french","apple","beach","perry","sadie","capemay"};
 		wordsAr = new String[]{"french", "eth", "groupon", "epic"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
