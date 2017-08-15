@@ -212,7 +212,7 @@ public class Crossword {
 			int smallestCol = colSetList.get(0);
 			int largestCol = colSetList.get(colSetList.size()-1);
 			int colSetDiff = largestCol - smallestCol + 1;
-			int wordCounter = 0;
+			int wordCounter = -1;
 			Map<Integer, String> horIntWordMap = new HashMap<Integer, String>();
 			Map<Integer, String> verIntWordMap = new HashMap<Integer, String>();
 			
@@ -1048,6 +1048,10 @@ public class Crossword {
 		String[] wordsAr = {"apple","pear", "play", "alps", "yarn","woman", "orange", "crocodile"};
 		//wordsAr = new String[]{"french","apple","beach","perry","sadie","capemay"};
 		wordsAr = new String[]{"french", "eth", "groupon", "epic"};
+		wordsAr = new String[]{"none", "groupon", "chess", "epic","perry","beach","capemay",
+				"physician","funny","math"};
+		wordsAr = new String[]{"shirt", "scarf", "gloves", "love","sudoku","cheese","tunic",
+				"happy","smile","cocktail"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
