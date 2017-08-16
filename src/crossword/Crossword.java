@@ -1,5 +1,10 @@
 package crossword;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,6 +26,22 @@ public class Crossword {
 	
 	//length of the crossword, one dimension
 	private static final int BOARD_LEN = 200;
+	private static final char[] GREEK_ALPHA;
+	private static final int GREEK_ALPHA_LEN;
+	
+	static{
+		GREEK_ALPHA = new char[]{'0','1','2',
+				'3','4','5','6','7',
+				'8','9',
+				'\u03b1', '\u03b2','\u03b3',
+				'\u03b4','\u03b5','\u03b6','\u03b7','\u03b8',
+				'\u03b9','\u03ba','\u03bb','\u03bc','\u03bd',
+				'\u03be','\u03bf','\u03c0','\u03c1','\u03c2',
+				'\u03c3','\u03c4','\u03c5','\u03c7','\u03c8',
+				'\u03c9'};
+		System.out.println(Arrays.toString(GREEK_ALPHA));
+		GREEK_ALPHA_LEN = GREEK_ALPHA.length;
+	}
 	
 	/**
 	 * A node used during the nodes gathering process.
@@ -164,7 +185,7 @@ public class Crossword {
 		 * Prints out visualization of the given BoardPosition.
 		 * @param boardPos
 		 */
-		public void visualizeBoardPosition(BoardPosition boardPos){
+		public String visualizeBoardPosition(BoardPosition boardPos){
 			List<char[]> boardRowList = new ArrayList<char[]>();
 			
 			List<Integer> colSetList = new ArrayList<Integer>(colSet);
@@ -175,7 +196,9 @@ public class Crossword {
 			for(int j : rowSet){
 				//List<WordNode> nodeList = new ArrayList<WordNode>();
 				char[] rowAr = new char[colSetDiff];
-				for(int i : colSet){
+				int[] colRangeAr = boardPos.getColRangeToPrint(this);
+				//System.out.println("colRangeAr "+Arrays.toString(colRangeAr));
+				for(int i = colRangeAr[0]; i < colRangeAr[1]; i++){
 					BoardNode boardNode = this.board[j][i];
 					if(null == boardNode){
 						rowAr[i-smallestCol] = PLACEHOLDER_CHAR;
@@ -190,20 +213,25 @@ public class Crossword {
 				}
 				boardRowList.add(rowAr);
 			}
+			StringBuilder sb = new StringBuilder(500);
 			for(char[] rowAr : boardRowList){
 				for(char c : rowAr){
-					System.out.print(c + " ");
+					String s = c + " ";
+					System.out.print(s);
+					sb.append(s);
 				}
 				System.out.println();
+				sb.append("\n");
 				//System.out.println(Arrays.toString(rowAr));
 			}
+			return sb.toString();
 		}
 		
 		/**
 		 * Prints out visualization of the given BoardPosition.
 		 * @param boardPos
 		 */
-		public void visualizeBoardPositionPuzzle(BoardPosition boardPos){
+		public String visualizeBoardPositionPuzzle(BoardPosition boardPos){
 			List<char[]> boardRowList = new ArrayList<char[]>();
 			char blackSquareChar = '\u25a0';
 			//char whiteSquareChar = '\u25a1';
@@ -213,8 +241,8 @@ public class Crossword {
 			int largestCol = colSetList.get(colSetList.size()-1);
 			int colSetDiff = largestCol - smallestCol + 1;
 			int wordCounter = -1;
-			Map<Integer, String> horIntWordMap = new HashMap<Integer, String>();
-			Map<Integer, String> verIntWordMap = new HashMap<Integer, String>();
+			Map<Character, String> horIntWordMap = new HashMap<Character, String>();
+			Map<Character, String> verIntWordMap = new HashMap<Character, String>();
 			
 			//List<String> horWordsList = new ArrayList<String>();
 			//List<String> verWordsList = new ArrayList<String>();
@@ -223,7 +251,9 @@ public class Crossword {
 			for(int j : rowSet){
 				//List<WordNode> nodeList = new ArrayList<WordNode>();
 				char[] rowAr = new char[colSetDiff];
-				for(int i : colSet){
+				int[] colRangeAr = boardPos.getColRangeToPrint(this);
+				
+				for(int i = colRangeAr[0]; i < colRangeAr[1]; i++){
 					BoardNode boardNode = this.board[j][i];
 					if(null == boardNode){
 						rowAr[i-smallestCol] = blackSquareChar;
@@ -237,8 +267,10 @@ public class Crossword {
 						boolean wordAdded = false;
 						if(null != horWordStart){
 							wordCounter++;
-							horIntWordMap.put(wordCounter, horWordStart);
-							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
+							char keyChar = GREEK_ALPHA[wordCounter%GREEK_ALPHA_LEN];
+							horIntWordMap.put(keyChar, horWordStart);
+							rowAr[i-smallestCol] = keyChar;
+									//Integer.toString(wordCounter).charAt(0);
 							wordAdded = true;
 						}
 						if(null != (verWordStart=boardNode
@@ -246,9 +278,12 @@ public class Crossword {
 							if(!wordAdded){
 								wordCounter++;
 							}
-							verIntWordMap.put(wordCounter, verWordStart);
+							char keyChar = GREEK_ALPHA[wordCounter % GREEK_ALPHA_LEN];
+							//if(true) throw new RuntimeException(keyChar+"");
+							verIntWordMap.put(keyChar, verWordStart);
 							//take care of double digits!!
-							rowAr[i-smallestCol] = Integer.toString(wordCounter).charAt(0);
+							rowAr[i-smallestCol] = keyChar;
+									//Integer.toString(wordCounter).charAt(0);
 							wordAdded = true;
 						}
 						if(!wordAdded){
@@ -261,15 +296,22 @@ public class Crossword {
 				}
 				boardRowList.add(rowAr);
 			}
+			StringBuilder sb = new StringBuilder(500);
 			for(char[] rowAr : boardRowList){
 				for(char c : rowAr){
-					System.out.print(c + " ");
+					String s = c + " ";
+					System.out.print(s);
+					sb.append(s);
 				}
 				System.out.println();
+				sb.append("\n");
 				//System.out.println(Arrays.toString(rowAr));
 			}
 			System.out.println("horIntWordMap "+horIntWordMap);
+			sb.append("horIntWordMap "+horIntWordMap).append("\n");
 			System.out.println("verIntWordMap "+verIntWordMap);
+			sb.append("verIntWordMap "+verIntWordMap).append("\n");
+			return sb.toString();
 		}
 		/**
 		 * Legality of adding the word must be determined before calling this.
@@ -1015,7 +1057,73 @@ public class Crossword {
 			return -1;
 		}
 		
-	}//end of class
+		/**
+		 * 
+		 * @param board
+		 * @return integer array of first and last col to print.
+		 */
+		int[] getColRangeToPrint(Board board){
+			
+			//these sets are sorted.
+			Set<Integer> rowSet = board.rowSet;
+			List<Integer> colList = new ArrayList<Integer>(board.colSet);
+			
+			BoardNode[][] boardNodeAr = board.board;
+			
+			int firstCol = colList.get(0);
+			int colListSz = colList.size();
+			int lastCol = colList.get(colListSz-1);
+			//int midCol = colList.get(colListSz/2);			
+			//boolean colContains = true;
+			int curColIndex = colListSz/2;
+			colLoop: while(curColIndex > -1){
+				//go through all applicable rows in a column
+				//boolean curColContains = false;
+				for(int curRow : rowSet){
+					BoardNode curNode = boardNodeAr[curRow][colList.get(curColIndex)];
+					if(null != curNode
+							&& null != curNode.containsBoardPosition(this)){
+						//curColContains = true;
+						curColIndex--;
+						continue colLoop;
+					}					
+				}
+				//if(!curColContains){
+				if(curColIndex > 0){
+					//include extra col for padding
+					curColIndex--;
+				}
+					firstCol = colList.get(curColIndex);
+					break colLoop;
+				//}
+			}
+			curColIndex = colListSz/2;
+			lastColLoop: while(curColIndex < colListSz){
+				//go through all applicable rows in a column
+				//boolean curColContains = false;
+				for(int curRow : rowSet){
+					BoardNode curNode = boardNodeAr[curRow][colList.get(curColIndex)];
+					if(null != curNode
+							&& null != curNode.containsBoardPosition(this)){
+						//curColContains = true;
+						curColIndex++;
+						continue lastColLoop;
+					}					
+				}
+				//if(!curColContains){
+				if(curColIndex < colListSz-1){
+					//include extra col for padding
+					curColIndex++;
+				}
+					lastCol = colList.get(curColIndex);
+					break lastColLoop;
+				//}
+			}
+			return new int[]{firstCol, lastCol};	
+		}
+		
+		
+	}/*end of BoardPosition class*/
 	
 	private static class WordComparator implements Comparator<String>{
 		//long words come first
@@ -1029,18 +1137,37 @@ public class Crossword {
 	 * @param wordsList
 	 */
 	private static void processSet(List<String> wordsList){
+		//remove duplicates
+		wordsList = new ArrayList<String>(new HashSet<String>(wordsList));
 		Collections.sort(wordsList, new WordComparator());
 		String firstWord = wordsList.get(0);
 		wordsList.remove(0);
 		Board board = new Board(firstWord, wordsList);
 		
 		List<BoardPosition> satBoardPosList = board.build();
-		
+		//StringBuilder sb = new StringBuilder(5000);
+		List<String> puzzleList = new ArrayList<String>();
 		for(BoardPosition boardPos : satBoardPosList){
-			board.visualizeBoardPosition(boardPos);
-			board.visualizeBoardPositionPuzzle(boardPos);
+			String solStr = board.visualizeBoardPosition(boardPos);
+			//sb.append(solStr).append("\n");
+			puzzleList.add(solStr);
+			String puzzleStr = board.visualizeBoardPositionPuzzle(boardPos);
+			//sb.append(puzzleStr).append("\n");
+			puzzleList.add(puzzleStr);
 			System.out.println("intersection count: " + boardPos.totalWordIntersectionCount);
-		}		
+			puzzleList.add("Words intersection count: "+ boardPos.totalWordIntersectionCount);
+		}
+		puzzleList.add("total number of solutions: " + satBoardPosList.size());
+		String fileStr = "src/crossword/data/puzzles.txt";
+		writeToFile(puzzleList, Paths.get(fileStr));
+	}
+	
+	public static void writeToFile(List<? extends CharSequence> contentList, Path fileToPath) {
+		try {
+			Files.write(fileToPath, contentList, Charset.forName("UTF-16"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public static void main(String[] args){
@@ -1052,6 +1179,18 @@ public class Crossword {
 				"physician","funny","math"};
 		wordsAr = new String[]{"shirt", "scarf", "gloves", "love","sudoku","cheese","tunic",
 				"happy","smile","cocktail"};
+		///*
+		wordsAr = new String[]{"hyphae", "barbie", "canadian", "pythagorus","binomials","lobster","hamilton",
+				"cosine","burritos","charlesvillage","messiah","orioles","yankees"
+				};//*/
+		wordsAr = new String[]{"handel","stnick","violin","stnick","ravens","pickle","phonebook",
+				"fortran","harpsichord","workbench","teacup","redwine","eyebee","blubes","phonebook","allbutone"
+				};
+		//"handel","sam","stnick","ravens","violin","vlp",bach,"stnick","ravens","orioles","yankees","seven","mikecharlie","pickle","phonebook","crab",
+		//"fortran"
+		///////
+		//"towson"
+		
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
