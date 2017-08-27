@@ -17,6 +17,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Generate a crossword puzzle given a set of words.
  * @author yihed
@@ -28,6 +31,8 @@ public class Crossword {
 	private static final int BOARD_LEN = 200;
 	private static final char[] GREEK_ALPHA;
 	private static final int GREEK_ALPHA_LEN;
+	private static final String DEFAULT_ENCODING = "UTF-16";
+	private static final Logger logger = LogManager.getLogger(Crossword.class);
 	
 	static{
 		GREEK_ALPHA = new char[]{'0','1','2',
@@ -129,12 +134,62 @@ public class Crossword {
 			leafBoardPosSet.add(rootBoardPosition);
 			
 		}
-		
+		/**
+		 * Better boards have higher comparator value. Based on whether
+		 * how many words could be incorporated into a position, and the
+		 * number of word intersections, the more intersections, the higher score.
+		 * 
+		 */
 		private static class BoardPositionComparator implements Comparator<BoardPosition>{
+			
+			/**
+			 * map of boardPosition and total dist to any intersection.
+			 */
+			Map<BoardPosition, Integer> totalIntersectDistMap 
+				= new HashMap<BoardPosition, Integer>();
+			
+			/**
+			 * Constructor that creates totalIntersectDistMap.
+			 * @param board
+			 */
+			BoardPositionComparator(Board board){
+				Set<Integer> rowSet = board.rowSet;
+				Set<Integer> colSet = board.colSet;
+				
+				for(int row : rowSet){
+					for(int col : colSet){
+						BoardNode curNode = board.board[row][col];
+						if(null == curNode){
+							continue;
+						}
+						Map<BoardPosition, Integer> nodeBoardPosMap = curNode.distToIntersectMap;
+
+						for(Map.Entry<BoardPosition, Integer> entry : nodeBoardPosMap.entrySet()){
+							Integer curDist = totalIntersectDistMap.get(entry.getKey());
+							int distToAdd = null == curDist ? entry.getValue() : curDist + entry.getValue();
+							totalIntersectDistMap.put(entry.getKey(), distToAdd);								
+						}						
+					}					
+				}				
+			}
+			
+			/**
+			 * Larger is more optimal puzzle.
+			 */
 			public int compare(BoardPosition boardPos1, BoardPosition boardPos2){
 				int count1 = boardPos1.totalWordIntersectionCount;
 				int count2 = boardPos2.totalWordIntersectionCount;
-				return count1 > count2 ? 1 : (count1 < count2 ? -1 : 0);
+				int wordsLeft1 = boardPos1.remainingWordsList.size();
+				int wordsLeft2 = boardPos2.remainingWordsList.size();
+				int totalIntersectDist1 = totalIntersectDistMap.get(boardPos1);
+				int totalIntersectDist2 = totalIntersectDistMap.get(boardPos2);
+				
+				return wordsLeft1 < wordsLeft2 ? 1 : (wordsLeft1 > wordsLeft2 
+						? -1 : count1 > count2 ? 1 : (totalIntersectDist1 < totalIntersectDist2
+								? 1 : (totalIntersectDist1 > totalIntersectDist2 
+										? -1 : count1 < count2 ? -1 : 0)
+								)								
+						);
 			}
 		}
 		
@@ -177,7 +232,7 @@ public class Crossword {
 				this.leafBoardPosSet = newLeafBoardPosSet;
 			}
 			//Set<BoardPosition> tSet = new TreeSet<BoardPosition>(new BoardPositionComparator());
-			Collections.sort(satBoardPosList, new BoardPositionComparator());
+			Collections.sort(satBoardPosList, new BoardPositionComparator(this));
 			return satBoardPosList;	
 		}
 		
@@ -331,8 +386,9 @@ public class Crossword {
 						node = new BoardNode(curChar, boardPos);
 						board[rowStart][colStart+i] = node;
 					}
-					node.addBoardPosition(curChar, boardPos, orient);
+					node.addBoardPosition(curChar, boardPos, this, orient, rowStart, colStart+i);
 					colSet.add(colStart + i);
+					//
 				}	
 				rowSet.add(rowStart);
 			}else{
@@ -343,8 +399,10 @@ public class Crossword {
 						node = new BoardNode(curChar, boardPos);
 						board[rowStart+i][colStart] = node;
 					}
-					node.addBoardPosition(curChar, boardPos, orient);
+					node.addBoardPosition(curChar, boardPos, this, orient, rowStart+i, colStart);
 					rowSet.add(rowStart+i);
+					//
+					
 				}
 				colSet.add(colStart);
 			}
@@ -400,16 +458,19 @@ public class Crossword {
 	 * Each node contains set of Board positions and the char in that node.
 	 */
 	private static class BoardNode{
-		//board positions and their corresponding characters, 
-		//since different pos in board can overlap with diff letters.
+		/**board positions and their corresponding characters, 
+		since different pos in board can overlap with diff letters.*/
 		Map<BoardPosition, Character> boardPosCharMap 
 			= new HashMap<BoardPosition, Character>();
 		Set<BoardPosition> boardPositionHorSet;
 		Set<BoardPosition> boardPositionVerSet;
-		//membership indicates start of word at this node for the BoardPosition key.
-		//Used for creating final puzzle visualization.
+		/**membership indicates start of word (value) at this node for the BoardPosition key.
+		Used for creating final puzzle visualization.*/
 		Map<BoardPosition, String> horBoardPosWordMap = new HashMap<BoardPosition, String>();
 		Map<BoardPosition, String> verBoardPosWordMap = new HashMap<BoardPosition, String>();
+		/**distance to closest intersection, whether vertical or horizontal. Updated when
+		adding to either BoardPosWordMap.*/
+		Map<BoardPosition, Integer> distToIntersectMap = new HashMap<BoardPosition, Integer>();
 		
 		/**
 		 * @param letter_
@@ -467,13 +528,117 @@ public class Crossword {
 		 * @param boardPosition
 		 */
 		void addBoardPosition(char letter_, BoardPosition boardPosition, 
-				WordOrientation orient){
+				Board board, WordOrientation orient, int row, int col){
+			
+			//intersection if this node already contains boardPosition
+			if(boardPosCharMap.containsKey(boardPosition)){
+				this.distToIntersectMap.put(boardPosition, 0);
+				//update distances in all four directions
+				updateNeighborIntersectDist(boardPosition, board, row, col);
+			}else{
+				//add to distToIntersectMap based on dist along orient direction
+				if(WordOrientation.HORIZONTAL == orient){
+					Integer nearColDist;
+					if(null != board.board[row][col-1] &&
+							(nearColDist=board.board[row][col-1].distToIntersectMap.get(boardPosition)) != null){
+						this.distToIntersectMap.put(boardPosition, nearColDist+1);
+					}else if(null != board.board[row][col+1]
+							&& (nearColDist=board.board[row][col+1].distToIntersectMap.get(boardPosition)) != null){
+						this.distToIntersectMap.put(boardPosition, nearColDist+1);
+					}else{
+						//in case of first letter in word
+						this.distToIntersectMap.put(boardPosition, Integer.MAX_VALUE);
+					}
+				}else{
+					Integer nearRowDist;
+					if(null != board.board[row-1][col]
+							&& (nearRowDist=board.board[row-1][col].distToIntersectMap.get(boardPosition)) != null){
+						this.distToIntersectMap.put(boardPosition, nearRowDist+1);
+					}else if(null != board.board[row+1][col]
+							&& (nearRowDist=board.board[row+1][col].distToIntersectMap.get(boardPosition)) != null){
+						this.distToIntersectMap.put(boardPosition, nearRowDist+1);
+					}else{
+						this.distToIntersectMap.put(boardPosition, Integer.MAX_VALUE);
+					}
+				}
+			}
+			
 			this.boardPosCharMap.put(boardPosition, letter_);
 			if(WordOrientation.HORIZONTAL == orient){
 				this.boardPositionHorSet.add(boardPosition);				
 			}else{
 				this.boardPositionVerSet.add(boardPosition);
 			}
+			//add or adjust dist to nearest intersection of this node.
+			//also need board to walk and figure out distance.			
+		}
+		
+		/**
+		 * Add or update dist to nearest intersection of this node, dist
+		 * at this node is 0, since it's intersection.
+		 * @param boardPosition
+		 * @param board
+		 * @param row
+		 * @param col
+		 */
+		void updateNeighborIntersectDist(BoardPosition boardPosition, Board board, 
+				int row, int col){
+
+			//look before
+			updateNeighborIntersectDist(boardPosition, board, WordOrientation.HORIZONTAL,
+					row, col, -1);
+			//look after
+			updateNeighborIntersectDist(boardPosition, board, WordOrientation.HORIZONTAL,
+					row, col, 1);
+			
+			//look up
+			updateNeighborIntersectDist(boardPosition, board, WordOrientation.VERTICAL,
+					row, col, -1);
+			//look down
+			updateNeighborIntersectDist(boardPosition, board, WordOrientation.VERTICAL,
+					row, col, 1);
+		}
+		
+		/**
+		 * 
+		 * @param boardPosition
+		 * @param board
+		 * @param orient
+		 * @param row
+		 * @param col
+		 * @param toAdd amount to add each step, indicates whether going up (-1) or down (1)
+		 * (or before or after), depending on orient, resp.
+		 */
+		void updateNeighborIntersectDist(BoardPosition boardPosition, Board board, 
+				WordOrientation orient, int row, int col, int toAdd){
+			
+			final int initialDist = 1;
+			int curDist = initialDist;
+			BoardNode nearNode;
+			if(WordOrientation.HORIZONTAL == orient){
+				int curCol = col+toAdd;
+				Integer nearColDist;
+				nearNode = board.board[row][curCol];
+				while(null != nearNode && (nearColDist=nearNode.distToIntersectMap.get(boardPosition)) != null
+						&& nearColDist > curDist){					
+					nearNode.distToIntersectMap.put(boardPosition, curDist);
+					curDist++;
+					curCol += toAdd;
+					nearNode = board.board[row][curCol];
+				}
+			}else{
+				int curRow = row+toAdd;
+				Integer nearRowDist;
+				nearNode = board.board[curRow][col];
+				while(null != nearNode && (nearRowDist=nearNode.distToIntersectMap.get(boardPosition)) != null
+						&& nearRowDist > curDist){					
+					nearNode.distToIntersectMap.put(boardPosition, curDist);
+					curDist++;
+					curRow += toAdd;
+					nearNode = board.board[curRow][col];
+				}
+			}
+			
 		}
 		
 		/**
@@ -601,7 +766,7 @@ public class Crossword {
 				addWordNodes(board, childrenBoardPositionList, WordOrientation.VERTICAL, colTMap);
 			}
 			else{
-				/*add one-intersection word, only consider next longest word*/
+				/*add single-intersection word, only consider next longest word*/
 				//WordWithWordNodes list to record the positions filled
 				List<WordWithWordNodes> wordWithWordNodesHorList = new ArrayList<WordWithWordNodes>();
 				List<WordWithWordNodes> wordWithWordNodesVerList = new ArrayList<WordWithWordNodes>();
@@ -1044,7 +1209,6 @@ public class Crossword {
 				//+1 because don't want last letter to be 
 				//immediately followed by another word.
 				if(diff > remainCharCount + 1){
-					//count++;
 					return count;
 				}else if(nextNode.letter == wordCharAr[wordCharArIndex]){
 					remainCharCount -= diff;
@@ -1110,18 +1274,15 @@ public class Crossword {
 						continue lastColLoop;
 					}					
 				}
-				//if(!curColContains){
 				if(curColIndex < colListSz-1){
 					//include extra col for padding
 					curColIndex++;
 				}
-					lastCol = colList.get(curColIndex);
-					break lastColLoop;
-				//}
+				lastCol = colList.get(curColIndex);
+				break lastColLoop;
 			}
 			return new int[]{firstCol, lastCol};	
-		}
-		
+		}		
 		
 	}/*end of BoardPosition class*/
 	
@@ -1164,9 +1325,10 @@ public class Crossword {
 	
 	public static void writeToFile(List<? extends CharSequence> contentList, Path fileToPath) {
 		try {
-			Files.write(fileToPath, contentList, Charset.forName("UTF-16"));
+			Files.write(fileToPath, contentList, Charset.forName(DEFAULT_ENCODING));
 		} catch (IOException e) {
 			e.printStackTrace();
+			logger.error("IOException while writing results to file: " + e);
 		}
 	}
 	
@@ -1179,7 +1341,7 @@ public class Crossword {
 				"physician","funny","math"};
 		wordsAr = new String[]{"shirt", "scarf", "gloves", "love","sudoku","cheese","tunic",
 				"happy","smile","cocktail"};
-		///*
+		
 		wordsAr = new String[]{"hyphae", "barbie", "canadian", "pythagorus","binomials","lobster","hamilton",
 				"cosine","burritos","charlesvillage","messiah","orioles","yankees"
 				};//*/
@@ -1188,15 +1350,22 @@ public class Crossword {
 				};
 		//"handel","sam","stnick","ravens","violin","vlp",bach,"stnick","ravens","orioles","yankees","seven","mikecharlie","pickle","phonebook","crab",
 		//"fortran"
-		///////
-		//"towson"
+		wordsAr = new String[]{"mikecharlie","towson","bach","seven","crab","uptheroad","totowson","iliad",
+				"quadratic","hypotenuse","eclipse","bailey","kepler","pluto"};
+		wordsAr = new String[]{"newton","rowboat","zero","capecod","hood","capemay",
+				"avalon","thecod","buffalo","frangipane","blueberry","baritone",
+				"tycho","sam"};
+		wordsAr = new String[]{"maine","barefoot","makeitup","abulge","bowdoin","cherubs",
+				"sarsaparilla","meter","nightshift","sargents","cosmic","blue","yago",
+				"holehouse","brothertrap","nookieplace","benandjerry"};
 		
+		wordsAr = new String[]{"watermelon","banana","apple","pineapple","orange","lemon",
+				"kiwi","cherry","blueberry"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
 		}
-		processSet(wordsList);
-		
+		processSet(wordsList);		
 	}
 	
 }
