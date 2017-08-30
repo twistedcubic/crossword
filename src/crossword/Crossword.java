@@ -33,6 +33,7 @@ public class Crossword {
 	private static final int GREEK_ALPHA_LEN;
 	private static final String DEFAULT_ENCODING = "UTF-16";
 	private static final Logger logger = LogManager.getLogger(Crossword.class);
+	private static final boolean DEBUG = false;
 	
 	static{
 		GREEK_ALPHA = new char[]{'0','1','2',
@@ -99,7 +100,7 @@ public class Crossword {
 			}
 		}
 	}
-			
+	
 	/**
 	 * Object representing the puzzle board.
 	 */
@@ -231,7 +232,6 @@ public class Crossword {
 				}
 				this.leafBoardPosSet = newLeafBoardPosSet;
 			}
-			//Set<BoardPosition> tSet = new TreeSet<BoardPosition>(new BoardPositionComparator());
 			Collections.sort(satBoardPosList, new BoardPositionComparator(this));
 			return satBoardPosList;	
 		}
@@ -285,25 +285,28 @@ public class Crossword {
 		/**
 		 * Prints out visualization of the given BoardPosition.
 		 * @param boardPos
+		 * @param sb empty StringBuilder to append Strings for visualizing board.
 		 */
-		public String visualizeBoardPositionPuzzle(BoardPosition boardPos){
+		public PuzzleCoordinates visualizeBoardPositionPuzzle(BoardPosition boardPos, StringBuilder sb){
 			List<char[]> boardRowList = new ArrayList<char[]>();
 			char blackSquareChar = '\u25a0';
-			//char whiteSquareChar = '\u25a1';
 			
 			List<Integer> colSetList = new ArrayList<Integer>(colSet);
 			int smallestCol = colSetList.get(0);
 			int largestCol = colSetList.get(colSetList.size()-1);
 			int colSetDiff = largestCol - smallestCol + 1;
 			int wordCounter = -1;
+			/*labels of squares and the words they start*/
 			Map<Character, String> horIntWordMap = new HashMap<Character, String>();
 			Map<Character, String> verIntWordMap = new HashMap<Character, String>();
 			
-			//List<String> horWordsList = new ArrayList<String>();
-			//List<String> verWordsList = new ArrayList<String>();
+			List<Integer> rowCoordinatesList = new ArrayList<Integer>();
+			List<Integer> colCoordinatesList = new ArrayList<Integer>();
+			List<Character> labelList = new ArrayList<Character>();
+			int rowCounter = 0;
 			
-			//System.out.println("colSetDiff "+colSetDiff);
 			for(int j : rowSet){
+				
 				//List<WordNode> nodeList = new ArrayList<WordNode>();
 				char[] rowAr = new char[colSetDiff];
 				int[] colRangeAr = boardPos.getColRangeToPrint(this);
@@ -325,7 +328,11 @@ public class Crossword {
 							char keyChar = GREEK_ALPHA[wordCounter%GREEK_ALPHA_LEN];
 							horIntWordMap.put(keyChar, horWordStart);
 							rowAr[i-smallestCol] = keyChar;
-									//Integer.toString(wordCounter).charAt(0);
+							
+							rowCoordinatesList.add(rowCounter);
+							colCoordinatesList.add(i-smallestCol);
+							labelList.add(keyChar);
+							
 							wordAdded = true;
 						}
 						if(null != (verWordStart=boardNode
@@ -334,15 +341,26 @@ public class Crossword {
 								wordCounter++;
 							}
 							char keyChar = GREEK_ALPHA[wordCounter % GREEK_ALPHA_LEN];
-							//if(true) throw new RuntimeException(keyChar+"");
+							
 							verIntWordMap.put(keyChar, verWordStart);
-							//take care of double digits!!
-							rowAr[i-smallestCol] = keyChar;
-									//Integer.toString(wordCounter).charAt(0);
+							
+							if(!wordAdded){
+								//currently limited by number of labels in GREEK_ALPHA
+								rowAr[i-smallestCol] = keyChar;
+								
+								rowCoordinatesList.add(rowCounter);
+								colCoordinatesList.add(i-smallestCol);
+								labelList.add(keyChar);								
+							}
+							
 							wordAdded = true;
 						}
 						if(!wordAdded){
-							rowAr[i-smallestCol] = PLACEHOLDER_CHAR;/////HERE
+							rowAr[i-smallestCol] = PLACEHOLDER_CHAR;
+							
+							rowCoordinatesList.add(rowCounter);
+							colCoordinatesList.add(i-smallestCol);
+							labelList.add(PLACEHOLDER_CHAR);
 						}						
 						///rowAr[i-smallestCol] = boardNode.boardPosCharMap.get(posContained);
 					}else{
@@ -350,8 +368,9 @@ public class Crossword {
 					}
 				}
 				boardRowList.add(rowAr);
+				rowCounter++; 
 			}
-			StringBuilder sb = new StringBuilder(500);
+			//StringBuilder sb = new StringBuilder(500);
 			for(char[] rowAr : boardRowList){
 				for(char c : rowAr){
 					String s = c + " ";
@@ -366,7 +385,20 @@ public class Crossword {
 			sb.append("horIntWordMap "+horIntWordMap).append("\n");
 			System.out.println("verIntWordMap "+verIntWordMap);
 			sb.append("verIntWordMap "+verIntWordMap).append("\n");
-			return sb.toString();
+			
+			/*int[] rowCoordinatesAr = new Integer[rowCoordinatesList.size()];
+			rowCoordinatesAr = rowCoordinatesList.toArray(rowCoordinatesAr);
+			
+			int[] colCoordinatesAr = new Integer[colCoordinatesList.size()];
+			colCoordinatesAr = colCoordinatesList.toArray(colCoordinatesAr);
+			
+			char[] labelAr = new Character[labelList.size()];
+			labelAr = labelList.toArray(labelAr);*/
+			
+			return new PuzzleCoordinates(
+					rowCoordinatesList, colCoordinatesList,
+					labelList, horIntWordMap, verIntWordMap
+					);
 		}
 		/**
 		 * Legality of adding the word must be determined before calling this.
@@ -1294,33 +1326,108 @@ public class Crossword {
 	}
 	
 	/**
+	 * Class used by frontend to serialize to pass puzzle 
+	 * drawing info.
+	 */
+	public static class PuzzleCoordinates{
+		
+		private static final int LABEL_PLACEHOLDER = -1;
+
+		//coordinates for the rows and columns, use array rather 
+		//than list.
+		private List<Integer> rowCoordinates;
+		private List<Integer> colCoordinates;
+		//labels for squares, same length as row and col coordinate
+		//arrays, LABEL_PLACEHOLDER if no label.
+		private List<Character> labels;
+		
+		private Map<Character, String> horStartWordMap;
+		private Map<Character, String> verStartWordMap;
+				
+		/*PuzzleCoordinates(int[] rowCoordinates_, int[] colCoordinates_, char[] labels_,
+				Map<Character, String> horStartWordMap_, Map<Character, String> verStartWordMap_){
+			this.rowCoordinates = rowCoordinates_;
+			this.colCoordinates = colCoordinates_;
+			this.labels = labels_;
+			this.horStartWordMap = horStartWordMap_;
+			this.verStartWordMap = verStartWordMap_;
+		}*/
+		
+		public PuzzleCoordinates(List<Integer> rowCoordinates_, List<Integer> colCoordinates_, 
+				List<Character> labels_,
+				Map<Character, String> horStartWordMap_, Map<Character, String> verStartWordMap_){
+			this.rowCoordinates = rowCoordinates_;
+			this.colCoordinates = colCoordinates_;
+			this.labels = labels_;
+			this.horStartWordMap = horStartWordMap_;
+			this.verStartWordMap = verStartWordMap_;
+		}
+		
+		public List<Integer> rowCoordinates() {
+			return rowCoordinates;
+		}
+		
+		public List<Integer> colCoordinates() {
+			return colCoordinates;
+		}
+		
+		public List<Character> labels() {
+			return labels;
+		}
+		
+		public Map<Character, String> horStartWordMap(){
+			return horStartWordMap;
+		}
+		
+		public Map<Character, String> verStartWordMap(){
+			return verStartWordMap;
+		}
+	}
+	
+	/**
 	 * Takes list of words, create crossword puzzle from it.
 	 * @param wordsList
 	 */
-	private static void processSet(List<String> wordsList){
+	public static PuzzleCoordinates processSet(List<String> wordsList){
 		//remove duplicates
 		wordsList = new ArrayList<String>(new HashSet<String>(wordsList));
 		Collections.sort(wordsList, new WordComparator());
 		String firstWord = wordsList.get(0);
 		wordsList.remove(0);
 		Board board = new Board(firstWord, wordsList);
-		
+		//More optimal BoardPositions appear later in List.
 		List<BoardPosition> satBoardPosList = board.build();
-		//StringBuilder sb = new StringBuilder(5000);
-		List<String> puzzleList = new ArrayList<String>();
-		for(BoardPosition boardPos : satBoardPosList){
-			String solStr = board.visualizeBoardPosition(boardPos);
-			//sb.append(solStr).append("\n");
-			puzzleList.add(solStr);
-			String puzzleStr = board.visualizeBoardPositionPuzzle(boardPos);
-			//sb.append(puzzleStr).append("\n");
-			puzzleList.add(puzzleStr);
-			System.out.println("intersection count: " + boardPos.totalWordIntersectionCount);
-			puzzleList.add("Words intersection count: "+ boardPos.totalWordIntersectionCount);
+		
+		if(satBoardPosList.isEmpty()){
+			return null;
 		}
-		puzzleList.add("total number of solutions: " + satBoardPosList.size());
-		String fileStr = "src/crossword/data/puzzles.txt";
-		writeToFile(puzzleList, Paths.get(fileStr));
+		
+		BoardPosition bestBoardPos = satBoardPosList.get(satBoardPosList.size()-1);
+		StringBuilder sb = new StringBuilder(500);
+		PuzzleCoordinates puzzleCoordinates = board.visualizeBoardPositionPuzzle(bestBoardPos, sb);
+		System.out.println("best boardPos " + sb);		
+		System.out.println("intersection count: " + bestBoardPos.totalWordIntersectionCount);
+		
+		if(DEBUG){
+			//print all created BoardPos and write to file.
+			List<String> puzzleList = new ArrayList<String>();
+			for(BoardPosition boardPos : satBoardPosList){
+				String solStr = board.visualizeBoardPosition(boardPos);
+				
+				puzzleList.add(solStr);
+				sb = new StringBuilder(500);
+				board.visualizeBoardPositionPuzzle(boardPos, sb);
+				String puzzleStr = sb.toString();
+				
+				puzzleList.add(puzzleStr);
+				System.out.println("intersection count: " + boardPos.totalWordIntersectionCount);
+				puzzleList.add("Words intersection count: "+ boardPos.totalWordIntersectionCount);
+			}
+			puzzleList.add("total number of solutions: " + satBoardPosList.size());
+			String fileStr = "src/crossword/data/puzzles.txt";
+			writeToFile(puzzleList, Paths.get(fileStr));
+		}
+		return puzzleCoordinates;
 	}
 	
 	public static void writeToFile(List<? extends CharSequence> contentList, Path fileToPath) {
