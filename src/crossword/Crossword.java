@@ -287,7 +287,7 @@ public class Crossword {
 		 * @param boardPos
 		 * @param sb empty StringBuilder to append Strings for visualizing board.
 		 */
-		public PuzzleCoordinates visualizeBoardPositionPuzzle(BoardPosition boardPos, StringBuilder sb){
+		public List<PuzzleNodeCoordinates> visualizeBoardPositionPuzzle(BoardPosition boardPos, StringBuilder sb){
 			List<char[]> boardRowList = new ArrayList<char[]>();
 			char blackSquareChar = '\u25a0';
 			
@@ -299,6 +299,8 @@ public class Crossword {
 			/*labels of squares and the words they start*/
 			Map<Character, String> horIntWordMap = new HashMap<Character, String>();
 			Map<Character, String> verIntWordMap = new HashMap<Character, String>();
+			
+			List<PuzzleNodeCoordinates> coordinatesList = new ArrayList<PuzzleNodeCoordinates>();
 			
 			List<Integer> rowCoordinatesList = new ArrayList<Integer>();
 			List<Integer> colCoordinatesList = new ArrayList<Integer>();
@@ -317,6 +319,7 @@ public class Crossword {
 						rowAr[i-smallestCol] = blackSquareChar;
 						continue;
 					}
+					Character keyChar = null;
 					BoardPosition posContained = boardNode.containsBoardPosition(boardPos);
 					if(null != posContained){
 						String horWordStart = boardNode
@@ -325,7 +328,7 @@ public class Crossword {
 						boolean wordAdded = false;
 						if(null != horWordStart){
 							wordCounter++;
-							char keyChar = GREEK_ALPHA[wordCounter%GREEK_ALPHA_LEN];
+							keyChar = GREEK_ALPHA[wordCounter%GREEK_ALPHA_LEN];
 							horIntWordMap.put(keyChar, horWordStart);
 							rowAr[i-smallestCol] = keyChar;
 							
@@ -340,7 +343,7 @@ public class Crossword {
 							if(!wordAdded){
 								wordCounter++;
 							}
-							char keyChar = GREEK_ALPHA[wordCounter % GREEK_ALPHA_LEN];
+							keyChar = GREEK_ALPHA[wordCounter % GREEK_ALPHA_LEN];
 							
 							verIntWordMap.put(keyChar, verWordStart);
 							
@@ -352,16 +355,21 @@ public class Crossword {
 								colCoordinatesList.add(i-smallestCol);
 								labelList.add(keyChar);								
 							}
-							
 							wordAdded = true;
 						}
 						if(!wordAdded){
 							rowAr[i-smallestCol] = PLACEHOLDER_CHAR;
+							keyChar = PLACEHOLDER_CHAR;
 							
 							rowCoordinatesList.add(rowCounter);
 							colCoordinatesList.add(i-smallestCol);
-							labelList.add(PLACEHOLDER_CHAR);
-						}						
+							labelList.add(PLACEHOLDER_CHAR);							
+						}
+						
+						PuzzleNodeCoordinates nodeC 
+							= new PuzzleNodeCoordinates(rowCounter, i-smallestCol, keyChar, 
+									horWordStart, verWordStart);
+						coordinatesList.add(nodeC);
 						///rowAr[i-smallestCol] = boardNode.boardPosCharMap.get(posContained);
 					}else{
 						rowAr[i-smallestCol] = blackSquareChar;
@@ -386,19 +394,11 @@ public class Crossword {
 			System.out.println("verIntWordMap "+verIntWordMap);
 			sb.append("verIntWordMap "+verIntWordMap).append("\n");
 			
-			/*int[] rowCoordinatesAr = new Integer[rowCoordinatesList.size()];
-			rowCoordinatesAr = rowCoordinatesList.toArray(rowCoordinatesAr);
-			
-			int[] colCoordinatesAr = new Integer[colCoordinatesList.size()];
-			colCoordinatesAr = colCoordinatesList.toArray(colCoordinatesAr);
-			
-			char[] labelAr = new Character[labelList.size()];
-			labelAr = labelList.toArray(labelAr);*/
-			
-			return new PuzzleCoordinates(
+			/*return new PuzzleCoordinates(
 					rowCoordinatesList, colCoordinatesList,
 					labelList, horIntWordMap, verIntWordMap
-					);
+					);*/
+			return coordinatesList;
 		}
 		/**
 		 * Legality of adding the word must be determined before calling this.
@@ -525,11 +525,12 @@ public class Crossword {
 		}
 		
 		/**
-		 * Word if the word begins at this Node, could be a parent. 
+		 * Word if the word begins at this Node, could be represented in a 
+		 * parent boardPos. 
 		 * Null if no word starts in this Node.
 		 * @param boardPosition
 		 * @param orientAr
-		 * @return
+		 * @return Word if the word begins at this Node.
 		 */
 		String containsWordStart(BoardPosition boardPosition, WordOrientation orient){
 		
@@ -1329,6 +1330,27 @@ public class Crossword {
 	 * Class used by frontend to serialize to pass puzzle 
 	 * drawing info.
 	 */
+	public static class PuzzleNodeCoordinates{
+		private int row;
+		private int col;
+		private char label;
+		private String rowWord;
+		private String colWord;
+		
+		public PuzzleNodeCoordinates(int row_, int col_, char label_,
+				String rowWord_, String colWord_){
+			this.row = row_;
+			this.col = col_;
+			this.label = label_;
+			this.rowWord = rowWord_;
+			this.colWord = colWord_;
+		}
+	}
+	
+	/**
+	 * Class used by frontend to serialize to pass puzzle 
+	 * drawing info.
+	 */
 	public static class PuzzleCoordinates{
 		
 		private static final int LABEL_PLACEHOLDER = -1;
@@ -1343,15 +1365,6 @@ public class Crossword {
 		
 		private Map<Character, String> horStartWordMap;
 		private Map<Character, String> verStartWordMap;
-				
-		/*PuzzleCoordinates(int[] rowCoordinates_, int[] colCoordinates_, char[] labels_,
-				Map<Character, String> horStartWordMap_, Map<Character, String> verStartWordMap_){
-			this.rowCoordinates = rowCoordinates_;
-			this.colCoordinates = colCoordinates_;
-			this.labels = labels_;
-			this.horStartWordMap = horStartWordMap_;
-			this.verStartWordMap = verStartWordMap_;
-		}*/
 		
 		public PuzzleCoordinates(List<Integer> rowCoordinates_, List<Integer> colCoordinates_, 
 				List<Character> labels_,
@@ -1388,7 +1401,7 @@ public class Crossword {
 	 * Takes list of words, create crossword puzzle from it.
 	 * @param wordsList
 	 */
-	public static PuzzleCoordinates processSet(List<String> wordsList){
+	public static List<PuzzleNodeCoordinates> processSet(List<String> wordsList){
 		//remove duplicates
 		wordsList = new ArrayList<String>(new HashSet<String>(wordsList));
 		Collections.sort(wordsList, new WordComparator());
@@ -1399,12 +1412,12 @@ public class Crossword {
 		List<BoardPosition> satBoardPosList = board.build();
 		
 		if(satBoardPosList.isEmpty()){
-			return null;
+			return Collections.emptyList();
 		}
 		
 		BoardPosition bestBoardPos = satBoardPosList.get(satBoardPosList.size()-1);
 		StringBuilder sb = new StringBuilder(500);
-		PuzzleCoordinates puzzleCoordinates = board.visualizeBoardPositionPuzzle(bestBoardPos, sb);
+		List<PuzzleNodeCoordinates> coordinatesList = board.visualizeBoardPositionPuzzle(bestBoardPos, sb);
 		System.out.println("best boardPos " + sb);		
 		System.out.println("intersection count: " + bestBoardPos.totalWordIntersectionCount);
 		
@@ -1427,7 +1440,7 @@ public class Crossword {
 			String fileStr = "src/crossword/data/puzzles.txt";
 			writeToFile(puzzleList, Paths.get(fileStr));
 		}
-		return puzzleCoordinates;
+		return coordinatesList;
 	}
 	
 	public static void writeToFile(List<? extends CharSequence> contentList, Path fileToPath) {
