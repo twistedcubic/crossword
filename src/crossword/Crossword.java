@@ -221,8 +221,8 @@ public class Crossword {
 					List<List<WordNode>> colWordNodeList = new ArrayList<List<WordNode>>();
 					
 					gatherWordNodes(leafBoardPos, rowWordNodeList, colWordNodeList);
-					System.out.println("rowWordNodeList "+rowWordNodeList);
-					System.out.println("colWordNodeList "+colWordNodeList);
+					//System.out.println("rowWordNodeList "+rowWordNodeList);
+					//System.out.println("colWordNodeList "+colWordNodeList);
 					
 					List<BoardPosition> childrenBoardPosList = leafBoardPos
 							.findLegalWordInsertion(rowWordNodeList, colWordNodeList, this);
@@ -808,7 +808,6 @@ public class Crossword {
 				getSingleIntersectionWords(board, colWordNodeList,
 						wordWithWordNodesVerList, WordOrientation.VERTICAL);
 				
-				System.out.println("remainingWordsList "+remainingWordsList);
 				/*if(!wordWithWordNodesHorList.isEmpty() || !wordWithWordNodesVerList.isEmpty()){
 					this.remainingWordsList.remove(0);
 				}*/
@@ -1345,6 +1344,23 @@ public class Crossword {
 			this.rowWord = rowWord_;
 			this.colWord = colWord_;
 		}
+		
+		@Override
+		public String toString(){
+			StringBuilder sb = new StringBuilder("{(" +row + ", " + col + ") ");
+			if(' ' != label){
+				sb.append(" label ").append(label);
+			}
+			
+			if(null != rowWord){
+				sb.append(" ").append(rowWord);
+			}
+			if(null != colWord){
+				sb.append(" ").append(colWord);
+			}
+			sb.append("}");
+			return sb.toString();
+		}
 	}
 	
 	/**
@@ -1402,6 +1418,11 @@ public class Crossword {
 	 * @param wordsList
 	 */
 	public static List<PuzzleNodeCoordinates> processSet(List<String> wordsList){
+		
+		logger.info("processSet wordsList "+wordsList);
+		if(wordsList.isEmpty()){
+			return Collections.emptyList();
+		}
 		//remove duplicates
 		wordsList = new ArrayList<String>(new HashSet<String>(wordsList));
 		Collections.sort(wordsList, new WordComparator());
@@ -1412,13 +1433,15 @@ public class Crossword {
 		List<BoardPosition> satBoardPosList = board.build();
 		
 		if(satBoardPosList.isEmpty()){
+			logger.info("no satisfied BoardPos found!");
 			return Collections.emptyList();
 		}
 		
 		BoardPosition bestBoardPos = satBoardPosList.get(satBoardPosList.size()-1);
 		StringBuilder sb = new StringBuilder(500);
 		List<PuzzleNodeCoordinates> coordinatesList = board.visualizeBoardPositionPuzzle(bestBoardPos, sb);
-		System.out.println("best boardPos " + sb);		
+		System.out.println("coordinatesList "+coordinatesList);
+		System.out.println("best boardPos \n" + sb);		
 		System.out.println("intersection count: " + bestBoardPos.totalWordIntersectionCount);
 		
 		if(DEBUG){
@@ -1440,6 +1463,7 @@ public class Crossword {
 			String fileStr = "src/crossword/data/puzzles.txt";
 			writeToFile(puzzleList, Paths.get(fileStr));
 		}
+		logger.info("done processSet!");
 		return coordinatesList;
 	}
 	
@@ -1481,6 +1505,7 @@ public class Crossword {
 		
 		wordsAr = new String[]{"watermelon","banana","apple","pineapple","orange","lemon",
 				"kiwi","cherry","blueberry"};
+		wordsAr = new String[]{"apple","pear","orange","lemon"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
