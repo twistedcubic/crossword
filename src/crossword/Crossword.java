@@ -1479,29 +1479,6 @@ public class Crossword {
 	public static void main(String[] args){
 		
 		String[] wordsAr = {"apple","pear", "play", "alps", "yarn","woman", "orange", "crocodile"};
-		//wordsAr = new String[]{"french","apple","beach","perry","sadie","capemay"};
-		wordsAr = new String[]{"french", "eth", "groupon", "epic"};
-		wordsAr = new String[]{"none", "groupon", "chess", "epic","perry","beach","capemay",
-				"physician","funny","math"};
-		wordsAr = new String[]{"shirt", "scarf", "gloves", "love","sudoku","cheese","tunic",
-				"happy","smile","cocktail"};
-		
-		wordsAr = new String[]{"hyphae", "barbie", "canadian", "pythagorus","binomials","lobster","hamilton",
-				"cosine","burritos","charlesvillage","messiah","orioles","yankees"
-				};//*/
-		wordsAr = new String[]{"handel","stnick","violin","stnick","ravens","pickle","phonebook",
-				"fortran","harpsichord","workbench","teacup","redwine","eyebee","blubes","phonebook","allbutone"
-				};
-		//"handel","sam","stnick","ravens","violin","vlp",bach,"stnick","ravens","orioles","yankees","seven","mikecharlie","pickle","phonebook","crab",
-		//"fortran"
-		wordsAr = new String[]{"mikecharlie","towson","bach","seven","crab","uptheroad","totowson","iliad",
-				"quadratic","hypotenuse","eclipse","bailey","kepler","pluto"};
-		wordsAr = new String[]{"newton","rowboat","zero","capecod","hood","capemay",
-				"avalon","thecod","buffalo","frangipane","blueberry","baritone",
-				"tycho","sam"};
-		wordsAr = new String[]{"maine","barefoot","makeitup","abulge","bowdoin","cherubs",
-				"sarsaparilla","meter","nightshift","sargents","cosmic","blue","yago",
-				"holehouse","brothertrap","nookieplace","benandjerry"};
 		
 		wordsAr = new String[]{"watermelon","banana","apple","pineapple","orange","lemon",
 				"kiwi","cherry","blueberry"};
