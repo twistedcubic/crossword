@@ -287,7 +287,8 @@ public class Crossword {
 		 * @param boardPos
 		 * @param sb empty StringBuilder to append Strings for visualizing board.
 		 */
-		public List<PuzzleNodeCoordinates> visualizeBoardPositionPuzzle(BoardPosition boardPos, StringBuilder sb){
+		public List<PuzzleNodeCoordinates> visualizeBoardPositionPuzzle(BoardPosition boardPos, 
+				StringBuilder sb, Map<String, String> wordHintsMap){
 			List<char[]> boardRowList = new ArrayList<char[]>();
 			char blackSquareChar = '\u25a0';
 			
@@ -308,12 +309,11 @@ public class Crossword {
 			int rowCounter = 0;
 			
 			for(int j : rowSet){
-				
-				//List<WordNode> nodeList = new ArrayList<WordNode>();
+
 				char[] rowAr = new char[colSetDiff];
 				int[] colRangeAr = boardPos.getColRangeToPrint(this);
 				
-				for(int i = colRangeAr[0]; i < colRangeAr[1]; i++){
+				for(int i = colRangeAr[0]; i < colRangeAr[1]+1; i++){
 					BoardNode boardNode = this.board[j][i];
 					if(null == boardNode){
 						rowAr[i-smallestCol] = blackSquareChar;
@@ -368,7 +368,7 @@ public class Crossword {
 						
 						PuzzleNodeCoordinates nodeC 
 							= new PuzzleNodeCoordinates(rowCounter, i-smallestCol, keyChar, 
-									horWordStart, verWordStart);
+									horWordStart, verWordStart, wordHintsMap);
 						coordinatesList.add(nodeC);
 						///rowAr[i-smallestCol] = boardNode.boardPosCharMap.get(posContained);
 					}else{
@@ -1263,7 +1263,6 @@ public class Crossword {
 			//these sets are sorted.
 			Set<Integer> rowSet = board.rowSet;
 			List<Integer> colList = new ArrayList<Integer>(board.colSet);
-			
 			BoardNode[][] boardNodeAr = board.board;
 			
 			int firstCol = colList.get(0);
@@ -1302,6 +1301,7 @@ public class Crossword {
 					if(null != curNode
 							&& null != curNode.containsBoardPosition(this)){
 						//curColContains = true;
+						lastCol = colList.get(curColIndex);
 						curColIndex++;
 						continue lastColLoop;
 					}					
@@ -1310,9 +1310,10 @@ public class Crossword {
 					//include extra col for padding
 					curColIndex++;
 				}
-				lastCol = colList.get(curColIndex);
+				lastCol = colList.get(curColIndex);				
 				break lastColLoop;
 			}
+			
 			return new int[]{firstCol, lastCol};	
 		}		
 		
@@ -1333,16 +1334,26 @@ public class Crossword {
 		private int row;
 		private int col;
 		private char label;
+		/* A coordinate can have either rowWord or colWord, or both
+		 */
 		private String rowWord;
+		private String rowHint;
 		private String colWord;
+		private String colHint;
 		
 		public PuzzleNodeCoordinates(int row_, int col_, char label_,
-				String rowWord_, String colWord_){
+				String rowWord_, String colWord_, Map<String, String> wordHintsMap){
 			this.row = row_;
 			this.col = col_;
 			this.label = label_;
 			this.rowWord = rowWord_;
+			if(null != rowWord_){
+				this.rowHint = wordHintsMap.get(rowWord_);
+			}
 			this.colWord = colWord_;
+			if(null != colWord_){
+				this.colHint = wordHintsMap.get(colWord_);
+			}
 		}
 		
 		@Override
@@ -1415,7 +1426,9 @@ public class Crossword {
 	
 	/**
 	 * Takes list of words, create crossword puzzle from it.
-	 * @param wordsList
+	 * 
+	 * @param wordsList comma-separated words and hints, alternating
+	 * word0,hint0,word1,hint1,...
 	 */
 	public static List<PuzzleNodeCoordinates> processSet(List<String> wordsList){
 		
@@ -1423,6 +1436,10 @@ public class Crossword {
 		if(wordsList.isEmpty()){
 			return Collections.emptyList();
 		}
+		//build word-to-hint map.
+		Map<String, String> wordHintsMap = new HashMap<String, String>();
+		wordsList = buildWordHintsMap(wordsList, wordHintsMap);
+		
 		//remove duplicates
 		wordsList = new ArrayList<String>(new HashSet<String>(wordsList));
 		Collections.sort(wordsList, new WordComparator());
@@ -1439,7 +1456,7 @@ public class Crossword {
 		
 		BoardPosition bestBoardPos = satBoardPosList.get(satBoardPosList.size()-1);
 		StringBuilder sb = new StringBuilder(500);
-		List<PuzzleNodeCoordinates> coordinatesList = board.visualizeBoardPositionPuzzle(bestBoardPos, sb);
+		List<PuzzleNodeCoordinates> coordinatesList = board.visualizeBoardPositionPuzzle(bestBoardPos, sb, wordHintsMap);
 		System.out.println("coordinatesList "+coordinatesList);
 		System.out.println("best boardPos \n" + sb);		
 		System.out.println("intersection count: " + bestBoardPos.totalWordIntersectionCount);
@@ -1452,7 +1469,7 @@ public class Crossword {
 				
 				puzzleList.add(solStr);
 				sb = new StringBuilder(500);
-				board.visualizeBoardPositionPuzzle(boardPos, sb);
+				board.visualizeBoardPositionPuzzle(boardPos, sb, Collections.emptyMap());
 				String puzzleStr = sb.toString();
 				
 				puzzleList.add(puzzleStr);
@@ -1467,6 +1484,26 @@ public class Crossword {
 		return coordinatesList;
 	}
 	
+	/**
+	 * 
+	 * @param wordsList comma-separated words and hints, alternating
+	 * word0,hint0,word1,hint1,...
+	 * @return
+	 */
+	private static List<String> buildWordHintsMap(List<String> wordsList,
+			Map<String, String> wordHintsMap) {
+		
+		List<String> updatedWordsList = new ArrayList<String>();
+		int wordsListSz = wordsList.size();
+		for(int i = 0; i < wordsListSz-1; i+=2){
+			String word = wordsList.get(i);
+			String hint = wordsList.get(i+1);
+			wordHintsMap.put(word, hint);
+			updatedWordsList.add(word);
+		}
+		return updatedWordsList;
+	}
+
 	public static void writeToFile(List<? extends CharSequence> contentList, Path fileToPath) {
 		try {
 			Files.write(fileToPath, contentList, Charset.forName(DEFAULT_ENCODING));
@@ -1483,6 +1520,7 @@ public class Crossword {
 		wordsAr = new String[]{"watermelon","banana","apple","pineapple","orange","lemon",
 				"kiwi","cherry","blueberry"};
 		wordsAr = new String[]{"apple","pear","orange","lemon"};
+		wordsAr = new String[]{"apple","hi","ask","hi"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
