@@ -1372,6 +1372,25 @@ public class Crossword {
 			sb.append("}");
 			return sb.toString();
 		}
+		
+		public int row(){
+			return this.row;
+		}
+		public int col(){
+			return this.col;
+		}
+		public String rowWord(){
+			return this.rowWord;
+		}
+		public String colWord(){
+			return this.colWord;
+		}
+		public String rowHint(){
+			return this.rowHint;
+		}
+		public String colHint(){
+			return this.colHint;
+		}
 	}
 	
 	/**
