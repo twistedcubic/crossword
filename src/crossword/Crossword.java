@@ -186,9 +186,9 @@ public class Crossword {
 				int totalIntersectDist2 = totalIntersectDistMap.get(boardPos2);
 				
 				return wordsLeft1 < wordsLeft2 ? 1 : (wordsLeft1 > wordsLeft2 
-						? -1 : count1 > count2 ? 1 : (totalIntersectDist1 < totalIntersectDist2
-								? 1 : (totalIntersectDist1 > totalIntersectDist2 
-										? -1 : count1 < count2 ? -1 : 0)
+						? -1 : count1 > count2 ? 1 : (count1 < count2								
+								? -1 : (totalIntersectDist1 > totalIntersectDist2 
+										? -1 : totalIntersectDist1 < totalIntersectDist2 ? 1 : 0)
 								)								
 						);
 			}
