@@ -968,7 +968,8 @@ public class Crossword {
 									&& j + postSpace > wordCharAr.length + 1
 									//check the top of the would-be starting point
 									///*
-									&& (firstCharInsert || null == colOrRowPerpNode
+									&& (firstCharInsert || 
+											null == colOrRowPerpNode
 										|| null == colOrRowPerpNode
 										.containsBoardPosition(this, orient.getOpposite()))
 									&& (null == colOrRowParallelNode
@@ -1151,7 +1152,10 @@ public class Crossword {
 						
 						for(int j = 0; j < wordCharArLen; j++){
 							char curChar = wordCharAr[j];
-
+							if(curChar != wordNodeChar) {
+								continue;
+							}
+							
 							int firstLetterRow;
 							int firstLetterCol;
 							int lastLetterRow;
@@ -1492,7 +1496,7 @@ public class Crossword {
 		BoardPosition bestBoardPos = satBoardPosList.get(satBoardPosList.size()-1);
 		StringBuilder sb = new StringBuilder(500);
 		List<PuzzleNodeCoordinates> coordinatesList = board.visualizeBoardPositionPuzzle(bestBoardPos, sb, wordHintsMap);
-		System.out.println("coordinatesList "+coordinatesList);
+		System.out.println("processSet - coordinatesList "+coordinatesList);
 		System.out.println("best boardPos \n" + sb);		
 		System.out.println("intersection count: " + bestBoardPos.totalWordIntersectionCount);
 		
@@ -1567,6 +1571,7 @@ public class Crossword {
 		wordsAr = new String[] {"kiwi","yellow","it",""};
 		wordsAr = new String[] {"b","yellow","bc",""};
 		wordsAr = new String[] {"ab","yellow","bc",""};
+		wordsAr = new String[] {"apple","","pear","", "play","", "alps","", "yarn"};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
