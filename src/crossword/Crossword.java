@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -22,7 +21,7 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * Generate a crossword puzzle given a set of words.
- * @author yihed
+ * @author yihedong
  *
  */
 public class Crossword {
@@ -45,7 +44,6 @@ public class Crossword {
 				'\u03be','\u03bf','\u03c0','\u03c1','\u03c2',
 				'\u03c3','\u03c4','\u03c5','\u03c7','\u03c8',
 				'\u03c9'};
-		System.out.println(Arrays.toString(GREEK_ALPHA));
 		GREEK_ALPHA_LEN = GREEK_ALPHA.length;
 	}
 	
@@ -204,15 +202,13 @@ public class Crossword {
 			List<BoardPosition> satBoardPosList = new ArrayList<BoardPosition>();
 			
 			while(satBoardPosList.size() < 1 && !this.leafBoardPosSet.isEmpty()){
-				
-				System.out.println("this.leafBoardPosSet "+ this.leafBoardPosSet.size() 
-					+ "  " +this.leafBoardPosSet);
-				
+								
 				Set<BoardPosition> newLeafBoardPosSet = new HashSet<BoardPosition>();
 				
 				for(BoardPosition leafBoardPos : this.leafBoardPosSet){
 					//System.out.println("leafBoardPos.remainingWordsList "+leafBoardPos.remainingWordsList);
 					if(leafBoardPos.remainingWordsList.isEmpty()){
+						//here
 						satBoardPosList.add(leafBoardPos);
 						continue;
 					}
@@ -389,7 +385,7 @@ public class Crossword {
 				sb.append("\n");
 				//System.out.println(Arrays.toString(rowAr));
 			}
-			System.out.println("horIntWordMap "+horIntWordMap);
+			System.out.println("horIntWordMap: "+horIntWordMap);
 			sb.append("horIntWordMap "+horIntWordMap).append("\n");
 			System.out.println("verIntWordMap "+verIntWordMap);
 			sb.append("verIntWordMap "+verIntWordMap).append("\n");
@@ -400,6 +396,7 @@ public class Crossword {
 					);*/
 			return coordinatesList;
 		}
+		
 		/**
 		 * Legality of adding the word must be determined before calling this.
 		 * @param word
@@ -698,6 +695,7 @@ public class Crossword {
 		}
 		
 		/**
+		 * Checks if given BoardPosition is contained in this BoardNode.
 		 * @param boardPosition
 		 * @return BoardPosition that's contained in this Node, could be a parent.
 		 * null if none of ancestors is contained in this Node.
@@ -710,6 +708,7 @@ public class Crossword {
 			}else{
 				orientedBoardPosSet = this.boardPositionVerSet;
 			}
+			//boardPosition use default reference equality
 			if(orientedBoardPosSet.contains(boardPosition)){
 				return boardPosition;
 			}
@@ -759,6 +758,10 @@ public class Crossword {
 				this.wordNodesList = wordNodesList_;
 				this.wordStartingIndex = wordStartingIndex_;
 			}
+		}
+		
+		public String toString() {
+			return this.remainingWordsList.toString();
 		}
 		
 		/**
@@ -870,7 +873,7 @@ public class Crossword {
 				childrenBoardPositionList.add(boardPos);
 			}
 		}
-
+		//orient is the orientation of word to be added
 		private void getSingleIntersectionWords(Board board, List<List<WordNode>> rowWordNodeList,
 				List<WordWithWordNodes> wordWithWordNodesList,
 				WordOrientation orient) {
@@ -907,6 +910,9 @@ public class Crossword {
 					
 					for(int j = 0; j < wordCharArLen; j++){
 						char curChar = wordCharAr[j];
+						if(curChar != wordNodeChar) {
+							continue;
+						}
 						//System.out.println("curChar, wordNodeChar "+curChar + ", "+ wordNodeChar);
 
 						int firstLetterRow;
@@ -915,20 +921,23 @@ public class Crossword {
 						int lastLetterCol;
 						//to ensure the top or left of starting word isn't
 						//the end of another word with same BoardPosition.
-						int colOrRowAboveRow;
-						int colOrRowAboveCol;
+						int colOrRowPerpRow;
+						int colOrRowPerpCol;
 						if(WordOrientation.HORIZONTAL == orient){
 							firstLetterRow = boardNodeRowNum;
 							firstLetterCol = boardNodeColNum - j;
-							colOrRowAboveRow = firstLetterRow - 1;
-							colOrRowAboveCol = firstLetterCol;
+							//if inserting horizontal word, check if another word ends right above the starting letter.
+							colOrRowPerpRow = firstLetterRow - 1;
+							colOrRowPerpCol = firstLetterCol;
 							lastLetterRow = boardNodeRowNum;
 							lastLetterCol = boardNodeColNum + wordCharArLen - (j+1);
 						}else{
 							firstLetterRow = boardNodeRowNum - j;
 							firstLetterCol = boardNodeColNum;
-							colOrRowAboveRow = firstLetterRow;
-							colOrRowAboveCol = firstLetterCol - 1;
+							//if inserting vertical word, check if another word ends right before the starting letter.
+							colOrRowPerpRow = firstLetterRow;
+							colOrRowPerpCol = firstLetterCol - 1;
+							
 							lastLetterRow = boardNodeRowNum + wordCharArLen - (j+1);
 							lastLetterCol = boardNodeColNum;
 						}
@@ -940,9 +949,15 @@ public class Crossword {
 							colOrRowAboveCol = boardNodeColNum - 1;
 						}*/
 												
-						BoardNode colOrRowAboveNode = board.board[colOrRowAboveRow][colOrRowAboveCol];
-						//avoid e.g. playarn for "play" and "yarn"
-						BoardNode colOrRowBeforeNode = board
+						BoardNode colOrRowPerpNode = board.board[colOrRowPerpRow][colOrRowPerpCol];
+						//If this intersection position is first char in the word to be inserted. if vertical insertion, same
+						//if same row; if horizontal, same if same column. This is so that e.g. {"ab","bc"} are recorded properly,
+						//without the 'a' in front of b being a hindrance because of board position containment.
+						boolean firstCharInsert = j == 0;
+						
+						//avoid e.g. playarn for "play" and "yarn". I.e contiguous, could be above row (if vertical) or
+						//column to left, if horizontal.
+						BoardNode colOrRowParallelNode = board
 								.board[WordOrientation.HORIZONTAL == orient ? firstLetterRow : firstLetterRow-1]
 										[WordOrientation.HORIZONTAL == orient ? firstLetterCol-1 : firstLetterCol];
 						
@@ -953,12 +968,11 @@ public class Crossword {
 									&& j + postSpace > wordCharAr.length + 1
 									//check the top of the would-be starting point
 									///*
-									&& (null == colOrRowAboveNode
-										|| null == colOrRowAboveNode
+									&& (firstCharInsert || null == colOrRowPerpNode
+										|| null == colOrRowPerpNode
 										.containsBoardPosition(this, orient.getOpposite()))
-										//****/
-									&& (null == colOrRowBeforeNode
-										|| null == colOrRowBeforeNode
+									&& (null == colOrRowParallelNode
+										|| null == colOrRowParallelNode
 										.containsBoardPosition(this, orient))
 									&& checkWordBody(board, firstLetterRow, firstLetterCol, 
 											lastLetterRow, lastLetterCol, orient)
@@ -983,8 +997,7 @@ public class Crossword {
 				}
 			}
 			if(wordWithWordNodesList.isEmpty()){
-				//need better way, this could lead to infinite loop if both 
-				//words don't fit!
+				//A better way than just deferring the word?
 				if(this.remainingWordsList.size() > 1){
 					this.remainingWordsList.remove(0);
 					this.remainingWordsList.add(1, nextLongestWord);					
@@ -998,7 +1011,6 @@ public class Crossword {
 								startingPos, orient, this);
 						this.remainingWordsList.clear();
 						//don't delete this comment yet!
-						if(true) throw new IllegalStateException();
 					}*/
 					String lastWord = this.remainingWordsList.get(0);
 					System.out.println("Crossword - last word didn't fit "+lastWord);
@@ -1163,9 +1175,13 @@ public class Crossword {
 								lastLetterRow = boardNodeRowNum + wordCharArLen - (j+1);
 								lastLetterCol = boardNodeColNum;
 							}
-							BoardNode colOrRowAboveNode = board.board[colOrRowAboveRow][colOrRowAboveCol];
+							BoardNode colOrRowPerpNode = board.board[colOrRowAboveRow][colOrRowAboveCol];
+							//If this intersection position is first char in the word to be inserted. if vertical insertion, same
+							//if same row; if horizontal, same if same column. This is so that e.g. {"ab","bc"} are recorded properly,
+							//without the 'a' in front of b being a hindrance because of board position containment.
+							boolean firstCharInsert = j == 0;
 							//avoid e.g. playarn for "play" and "yarn"
-							BoardNode colOrRowBeforeNode = board
+							BoardNode colOrRowParallelNode = board
 									.board[WordOrientation.HORIZONTAL == orient ? firstLetterRow : firstLetterRow-1]
 											[WordOrientation.HORIZONTAL == orient ? firstLetterCol-1 : firstLetterCol];
 							
@@ -1175,11 +1191,11 @@ public class Crossword {
 									&& j + colDiff < wordCharAr.length 
 									&& wordCharAr[j+colDiff] == nextWordNodeChar
 									///*
-									&& (null == colOrRowAboveNode || 
-											null == colOrRowAboveNode.containsBoardPosition(this, orient.getOpposite()))
+									&& (firstCharInsert || null == colOrRowPerpNode || 
+											null == colOrRowPerpNode.containsBoardPosition(this, orient.getOpposite()))
 									//*/
-									&& (null == colOrRowBeforeNode ||
-											null == colOrRowBeforeNode.containsBoardPosition(this, orient))
+									&& (null == colOrRowParallelNode ||
+											null == colOrRowParallelNode.containsBoardPosition(this, orient))
 									&& checkWordBody(board, firstLetterRow, firstLetterCol, 
 											lastLetterRow, lastLetterCol, orient)
 									&& checkAroundLastLetter(board, orient, lastLetterRow, lastLetterCol)
@@ -1469,7 +1485,7 @@ public class Crossword {
 		List<BoardPosition> satBoardPosList = board.build();
 		
 		if(satBoardPosList.isEmpty()){
-			logger.info("no satisfied BoardPos found!");
+			System.out.println("no satisfied BoardPos found!");
 			return Collections.emptyList();
 		}
 		
@@ -1540,6 +1556,17 @@ public class Crossword {
 				"kiwi","cherry","blueberry"};
 		wordsAr = new String[]{"apple","pear","orange","lemon"};
 		wordsAr = new String[]{"apple","hi","ask","hi"};
+		wordsAr = new String[]{"apple","orange","pear"};
+		//should be in alternating {"word0", "hint0", "word1", "hint1"} format!
+		wordsAr = new String[]{"apple","","pear",""};
+		wordsAr = new String[] {"kiwi","green","banana","yellow"};
+		wordsAr = new String[] {"banana","yellow"};
+		//try this!
+		wordsAr = new String[] {"banana","yellow","apple",""};
+		wordsAr = new String[] {"pear","yellow","apple",""};
+		wordsAr = new String[] {"kiwi","yellow","it",""};
+		wordsAr = new String[] {"b","yellow","bc",""};
+		wordsAr = new String[] {"ab","yellow","bc",""};
 		List<String> wordsList = new ArrayList<String>();
 		for(String word : wordsAr){
 			wordsList.add(word);
